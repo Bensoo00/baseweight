@@ -234,6 +234,10 @@ export default async function HomePage() {
                 Add gear
               </h3>
               <AddGearForm />
+              <p className="mt-3 text-sm text-ink-soft">
+                Tip: you can also add items directly on a pack, or import a
+                LighterPack CSV under Packs.
+              </p>
             </div>
           </div>
         </AuthGate>

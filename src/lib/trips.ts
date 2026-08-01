@@ -197,6 +197,67 @@ export async function addLockerItemsToTrip(
     .where(eq(trips.id, tripId));
 }
 
+export async function addCustomItemToTrip(
+  userId: number,
+  tripId: number,
+  input: {
+    name: string;
+    brand?: string;
+    category: LockerItem["category"];
+    weightGrams: number;
+    priceUsd?: number;
+    quantity?: number;
+    worn?: boolean;
+    consumable?: boolean;
+    notes?: string;
+    alsoAddToLocker?: boolean;
+  },
+) {
+  const owned = await getOwnedTripDetail(tripId, userId);
+  if (!owned) return null;
+
+  let lockerItemId: number | null = null;
+  if (input.alsoAddToLocker) {
+    const [lockerItem] = await db
+      .insert(lockerItems)
+      .values({
+        userId,
+        name: input.name,
+        brand: input.brand ?? "",
+        category: input.category,
+        weightGrams: input.weightGrams,
+        priceUsd: input.priceUsd ?? 0,
+        quantity: input.quantity ?? 1,
+        wornDefault: input.worn ?? false,
+        consumableDefault: input.consumable ?? false,
+        notes: input.notes ?? "",
+        createdAt: new Date().toISOString(),
+      })
+      .returning();
+    lockerItemId = lockerItem.id;
+  }
+
+  await db.insert(tripItems).values({
+    tripId,
+    lockerItemId,
+    name: input.name,
+    brand: input.brand ?? "",
+    category: input.category,
+    weightGrams: input.weightGrams,
+    priceUsd: input.priceUsd ?? 0,
+    quantity: input.quantity ?? 1,
+    worn: input.worn ?? false,
+    consumable: input.consumable ?? false,
+    notes: input.notes ?? "",
+  });
+  await db
+    .update(trips)
+    .set({ updatedAt: new Date().toISOString() })
+    .where(eq(trips.id, tripId));
+
+  return getTripDetail(tripId);
+}
+
 export async function addCatalogToLockerAndTrip(options: {
   userId: number;
   tripId?: number;

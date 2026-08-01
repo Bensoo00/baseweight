@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, ChevronDown, Trash2 } from "lucide-react";
 import type { LockerItem } from "@/db/schema";
+import { LOCKER_UPDATED_EVENT } from "@/components/AddGearForm";
 import { Weight } from "@/components/UnitProvider";
 import {
   CATEGORIES,
@@ -22,6 +23,27 @@ export function LockerClient({
   const [stats, setStats] = useState(summary);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
+  async function refresh() {
+    const res = await fetch("/api/locker");
+    if (!res.ok) return;
+    const data = await res.json();
+    setItems(data.items ?? []);
+    setStats(data.summary);
+  }
+
+  useEffect(() => {
+    setItems(initialItems);
+    setStats(summary);
+  }, [initialItems, summary]);
+
+  useEffect(() => {
+    function onUpdate() {
+      void refresh();
+    }
+    window.addEventListener(LOCKER_UPDATED_EVENT, onUpdate);
+    return () => window.removeEventListener(LOCKER_UPDATED_EVENT, onUpdate);
+  }, []);
+
   const grouped = useMemo(() => {
     const map = new Map<Category, LockerItem[]>();
     for (const cat of CATEGORIES) map.set(cat, []);
@@ -32,13 +54,6 @@ export function LockerClient({
     }
     return [...map.entries()].filter(([, list]) => list.length > 0);
   }, [items]);
-
-  async function refresh() {
-    const res = await fetch("/api/locker");
-    const data = await res.json();
-    setItems(data.items);
-    setStats(data.summary);
-  }
 
   async function removeItem(id: number) {
     await fetch(`/api/locker?id=${id}`, { method: "DELETE" });
@@ -51,7 +66,7 @@ export function LockerClient({
         <div>
           <p className="serif-label text-ink-soft">Gear inventory</p>
           <p className="mt-1 text-xs text-ink-soft/70">
-            Closet by category · collapse sections
+            Optional closet — packs can hold items without this
           </p>
         </div>
 
@@ -63,7 +78,8 @@ export function LockerClient({
             {formatUsd(stats.totalValueUsd)}
           </p>
           <p className="mt-5 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/85">
-            Own it once here, then load pieces into any pack list.
+            Use inventory if you want reuse across packs. Or add gear directly
+            on a pack list.
           </p>
         </div>
 
@@ -78,7 +94,8 @@ export function LockerClient({
       <section>
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <p className="max-w-md text-sm text-ink-soft">
-            Inventory by category. Add pieces below, then drop them into a pack.
+            Inventory updates live when you save below. Prefer pack editing?
+            Open a pack and hit Add item.
           </p>
           <a href="#packs" className="pill pill-soft w-fit">
             Build a pack
@@ -93,10 +110,7 @@ export function LockerClient({
               0,
             );
             return (
-              <div
-                key={category}
-                className="glass-card-soft overflow-hidden"
-              >
+              <div key={category} className="glass-card-soft overflow-hidden">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
@@ -150,7 +164,10 @@ export function LockerClient({
             );
           })}
           {grouped.length === 0 && (
-            <div className="panel p-8 text-ink-soft">Locker is empty.</div>
+            <div className="panel p-8 text-ink-soft">
+              Inventory is empty — add gear here, import a CSV pack, or create
+              items directly on a pack.
+            </div>
           )}
         </div>
       </section>

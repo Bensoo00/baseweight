@@ -71,8 +71,8 @@ export function UnitToggle({ dark = false }: { dark?: boolean }) {
   const { unit, setUnit } = useUnit();
   return (
     <div
-      className={`inline-flex rounded-full border border-white/40 p-0.5 text-xs font-semibold backdrop-blur-sm ${
-        dark ? "bg-white/10" : "bg-white/30"
+      className={`inline-flex rounded-full border border-black/10 p-0.5 text-xs font-semibold ${
+        dark ? "bg-white/10" : "bg-white/90"
       }`}
       role="group"
       aria-label="Weight units"

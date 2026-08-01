@@ -5,10 +5,30 @@ import { db } from "@/db";
 import { lockerItems, tripItems, trips } from "@/db/schema";
 import { seedIfEmpty } from "@/db/seed";
 import { requireUser } from "@/lib/auth";
-import { addLockerItemsToTrip, getOwnedTripDetail } from "@/lib/trips";
+import {
+  addCustomItemToTrip,
+  addLockerItemsToTrip,
+  getOwnedTripDetail,
+} from "@/lib/trips";
+import { CATEGORIES } from "@/lib/units";
 
-const addSchema = z.object({
+const fromLockerSchema = z.object({
   lockerItemIds: z.array(z.number().int().positive()).min(1),
+});
+
+const customItemSchema = z.object({
+  item: z.object({
+    name: z.string().min(1).max(120),
+    brand: z.string().max(80).optional().default(""),
+    category: z.enum(CATEGORIES),
+    weightGrams: z.number().int().positive().max(50000),
+    priceUsd: z.number().min(0).max(20000).optional().default(0),
+    quantity: z.number().int().positive().max(99).optional().default(1),
+    worn: z.boolean().optional().default(false),
+    consumable: z.boolean().optional().default(false),
+    notes: z.string().max(500).optional().default(""),
+    alsoAddToLocker: z.boolean().optional().default(false),
+  }),
 });
 
 const patchSchema = z.object({
@@ -32,9 +52,19 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const parsed = addSchema.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  const body = await request.json();
+  const custom = customItemSchema.safeParse(body);
+  if (custom.success) {
+    const detail = await addCustomItemToTrip(user.id, tripId, custom.data.item);
+    return NextResponse.json(detail, { status: 201 });
+  }
+
+  const fromLocker = fromLockerSchema.safeParse(body);
+  if (!fromLocker.success) {
+    return NextResponse.json(
+      { error: "Provide lockerItemIds or item." },
+      { status: 400 },
+    );
   }
 
   const items = await db
@@ -43,7 +73,7 @@ export async function POST(request: Request, { params }: Params) {
     .where(
       and(
         eq(lockerItems.userId, user.id),
-        inArray(lockerItems.id, parsed.data.lockerItemIds),
+        inArray(lockerItems.id, fromLocker.data.lockerItemIds),
       ),
     );
 

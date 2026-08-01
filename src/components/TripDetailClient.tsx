@@ -7,16 +7,23 @@ import {
   Check,
   Copy,
   Megaphone,
+  Plus,
   Share2,
   Trash2,
 } from "lucide-react";
 import type { LockerItem, Trail, Trip, TripItem } from "@/db/schema";
 import type { GapCheck, UpgradeSuggestion } from "@/lib/gap-checks";
 import type { PackStats } from "@/lib/pack-stats";
+import { LOCKER_UPDATED_EVENT } from "@/components/AddGearForm";
 import { CategoryBars } from "@/components/CategoryBars";
 import { GapPanel } from "@/components/GapPanel";
 import { Weight, useUnit } from "@/components/UnitProvider";
-import { CATEGORY_LABELS, formatUsd, type Category } from "@/lib/units";
+import {
+  CATEGORIES,
+  CATEGORY_LABELS,
+  formatUsd,
+  type Category,
+} from "@/lib/units";
 
 type Detail = {
   trip: Trip;
@@ -40,6 +47,7 @@ export function TripDetailClient({
   const [detail, setDetail] = useState(initial);
   const [pending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
   const [copied, setCopied] = useState(false);
@@ -49,6 +57,17 @@ export function TripDetailClient({
   const [openId, setOpenId] = useState<number | null>(
     initial.items[0]?.id ?? null,
   );
+  const [newItem, setNewItem] = useState({
+    name: "",
+    brand: "",
+    category: "other" as Category,
+    weightGrams: 100,
+    priceUsd: 0,
+    quantity: 1,
+    worn: false,
+    consumable: false,
+    alsoAddToLocker: false,
+  });
 
   useEffect(() => {
     const saved = window.localStorage.getItem("bw-author");
@@ -96,6 +115,30 @@ export function TripDetailClient({
       applyDetail(await res.json());
       setSelected([]);
       setPickerOpen(false);
+    });
+  }
+
+  function addDirectItem() {
+    if (!newItem.name.trim()) return;
+    startTransition(async () => {
+      const res = await fetch(`/api/trips/${detail.trip.id}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item: newItem }),
+      });
+      if (!res.ok) return;
+      applyDetail(await res.json());
+      if (newItem.alsoAddToLocker) {
+        window.dispatchEvent(new CustomEvent(LOCKER_UPDATED_EVENT));
+      }
+      setNewItem((prev) => ({
+        ...prev,
+        name: "",
+        brand: "",
+        weightGrams: 100,
+        priceUsd: 0,
+      }));
+      setAddOpen(false);
     });
   }
 
@@ -374,19 +417,163 @@ export function TripDetailClient({
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-2xl font-semibold tracking-tight">
-              Packed for this trip
+              Pack list
             </h2>
-            <button
-              type="button"
-              className="pill pill-cta"
-              onClick={() => setPickerOpen((v) => !v)}
-            >
-              <span className="arrow">
-                <Copy size={14} />
-              </span>
-              From locker
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="pill pill-cta"
+                onClick={() => {
+                  setAddOpen((v) => !v);
+                  setPickerOpen(false);
+                }}
+              >
+                <span className="arrow">
+                  <Plus size={14} />
+                </span>
+                Add item
+              </button>
+              <button
+                type="button"
+                className="pill pill-soft"
+                onClick={() => {
+                  setPickerOpen((v) => !v);
+                  setAddOpen(false);
+                }}
+              >
+                <Copy size={16} />
+                From inventory
+              </button>
+            </div>
           </div>
+
+          {addOpen && (
+            <div className="panel grid gap-3 p-4 md:grid-cols-2">
+              <div className="md:col-span-2 text-sm font-semibold">
+                Add straight to this pack
+              </div>
+              <label className="block space-y-1.5 md:col-span-2">
+                <span className="text-sm font-semibold">Name</span>
+                <input
+                  className="field"
+                  value={newItem.name}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, name: e.target.value })
+                  }
+                  placeholder="Item name"
+                  autoFocus
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-sm font-semibold">Brand</span>
+                <input
+                  className="field"
+                  value={newItem.brand}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, brand: e.target.value })
+                  }
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-sm font-semibold">Category</span>
+                <select
+                  className="field"
+                  value={newItem.category}
+                  onChange={(e) =>
+                    setNewItem({
+                      ...newItem,
+                      category: e.target.value as Category,
+                    })
+                  }
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {CATEGORY_LABELS[cat]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-sm font-semibold">Weight (g)</span>
+                <input
+                  className="field"
+                  type="number"
+                  min={1}
+                  value={newItem.weightGrams}
+                  onChange={(e) =>
+                    setNewItem({
+                      ...newItem,
+                      weightGrams: Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-sm font-semibold">Price (USD)</span>
+                <input
+                  className="field"
+                  type="number"
+                  min={0}
+                  value={newItem.priceUsd}
+                  onChange={(e) =>
+                    setNewItem({
+                      ...newItem,
+                      priceUsd: Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+              <div className="flex flex-wrap gap-2 md:col-span-2">
+                <button
+                  type="button"
+                  className="chip"
+                  data-active={newItem.worn}
+                  onClick={() =>
+                    setNewItem({ ...newItem, worn: !newItem.worn })
+                  }
+                >
+                  Worn
+                </button>
+                <button
+                  type="button"
+                  className="chip"
+                  data-active={newItem.consumable}
+                  onClick={() =>
+                    setNewItem({
+                      ...newItem,
+                      consumable: !newItem.consumable,
+                    })
+                  }
+                >
+                  Consumable
+                </button>
+                <button
+                  type="button"
+                  className="chip"
+                  data-active={newItem.alsoAddToLocker}
+                  onClick={() =>
+                    setNewItem({
+                      ...newItem,
+                      alsoAddToLocker: !newItem.alsoAddToLocker,
+                    })
+                  }
+                >
+                  Also save to inventory
+                </button>
+              </div>
+              <button
+                type="button"
+                className="pill pill-cta w-fit"
+                disabled={pending || !newItem.name.trim()}
+                onClick={addDirectItem}
+              >
+                <span className="arrow">
+                  <Plus size={14} />
+                </span>
+                {pending ? "Adding…" : "Add to pack"}
+              </button>
+            </div>
+          )}
 
           {pickerOpen && (
             <div className="panel space-y-3 p-4">
@@ -395,10 +582,12 @@ export function TripDetailClient({
               </div>
               {availableLocker.length === 0 ? (
                 <p className="text-sm text-ink-soft">
-                  Everything in your locker is already on this trip.{" "}
-                  <Link href="/locker/add" className="underline">
-                    Add more to locker
+                  Nothing left in inventory for this pack. Use Add item above,
+                  or{" "}
+                  <Link href="/#gear" className="underline">
+                    manage inventory
                   </Link>
+                  .
                 </p>
               ) : (
                 <>
@@ -454,7 +643,8 @@ export function TripDetailClient({
           <div className="divide-y divide-black/8 overflow-hidden rounded-[1.25rem] border border-black/8 bg-white/80">
             {detail.items.length === 0 && (
               <div className="p-8 text-ink-soft">
-                Nothing packed yet. Pull items from your locker.
+                Nothing packed yet. Add an item, import a CSV, or pull from
+                inventory.
               </div>
             )}
             {detail.items.map((item) => {

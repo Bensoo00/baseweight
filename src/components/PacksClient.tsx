@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight, FileUp, Plus } from "lucide-react";
 import type { Trail } from "@/db/schema";
+import { LOCKER_UPDATED_EVENT } from "@/components/AddGearForm";
 import { Weight } from "@/components/UnitProvider";
 import { formatUsd } from "@/lib/units";
 
@@ -32,16 +33,21 @@ export function PacksClient({
   trails: Trail[];
 }) {
   const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [packs, setPacks] = useState(initialPacks);
   const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [assignTrip, setAssignTrip] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importName, setImportName] = useState("");
+  const [alsoLocker, setAlsoLocker] = useState(true);
   const [form, setForm] = useState({
     name: "",
     trailId: "",
     nights: 2,
     season: "summer",
-    seedFromLocker: true,
+    seedFromLocker: false,
   });
 
   async function refresh() {
@@ -74,24 +80,129 @@ export function PacksClient({
     });
   }
 
+  function importCsv(file: File) {
+    setImportError(null);
+    startTransition(async () => {
+      const csv = await file.text();
+      const res = await fetch("/api/trips/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          csv,
+          name: importName || file.name.replace(/\.csv$/i, ""),
+          alsoAddToLocker: alsoLocker,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setImportError(
+          typeof data.error === "string"
+            ? data.error
+            : "Could not import that CSV.",
+        );
+        return;
+      }
+      if (alsoLocker) {
+        window.dispatchEvent(new CustomEvent(LOCKER_UPDATED_EVENT));
+      }
+      setImportOpen(false);
+      setImportName("");
+      await refresh();
+      if (data.trip?.trip?.id) {
+        router.push(`/trips/${data.trip.trip.id}`);
+      }
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <p className="max-w-xl text-sm text-ink-soft">
-          Build a pack list first — like LighterPack. Optionally assign it to a
-          trail later, then log how the gear performed in Journal.
+          Build a pack list, import a LighterPack CSV, or add items directly on
+          the pack — no inventory required.
         </p>
-        <button
-          type="button"
-          className="pill pill-cta w-fit"
-          onClick={() => setOpen((v) => !v)}
-        >
-          <span className="arrow">
-            <Plus size={14} />
-          </span>
-          New pack
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="pill pill-soft w-fit"
+            onClick={() => {
+              setImportOpen((v) => !v);
+              setOpen(false);
+            }}
+          >
+            <FileUp size={16} />
+            Import CSV
+          </button>
+          <button
+            type="button"
+            className="pill pill-cta w-fit"
+            onClick={() => {
+              setOpen((v) => !v);
+              setImportOpen(false);
+            }}
+          >
+            <span className="arrow">
+              <Plus size={14} />
+            </span>
+            New pack
+          </button>
+        </div>
       </div>
+
+      {importOpen && (
+        <div className="glass-card space-y-4 p-5">
+          <div>
+            <p className="font-semibold">Import from LighterPack CSV</p>
+            <p className="mt-1 text-sm text-ink-soft">
+              On LighterPack: Share → Export to CSV, then upload that file here.
+            </p>
+          </div>
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold">Pack name (optional)</span>
+            <input
+              className="field"
+              placeholder="Uses the file name if blank"
+              value={importName}
+              onChange={(e) => setImportName(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={alsoLocker}
+              onChange={(e) => setAlsoLocker(e.target.checked)}
+            />
+            <span className="text-sm">
+              Also copy items into my gear inventory
+            </span>
+          </label>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) importCsv(file);
+              e.target.value = "";
+            }}
+          />
+          {importError && (
+            <p className="text-sm text-[var(--signal-fail)]">{importError}</p>
+          )}
+          <button
+            type="button"
+            className="pill pill-cta w-fit"
+            disabled={pending}
+            onClick={() => fileRef.current?.click()}
+          >
+            <span className="arrow">
+              <FileUp size={14} />
+            </span>
+            {pending ? "Importing…" : "Choose CSV file"}
+          </button>
+        </div>
+      )}
 
       {open && (
         <div className="glass-card grid gap-4 p-5 md:grid-cols-2">

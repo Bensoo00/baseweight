@@ -30,6 +30,8 @@ Demo account (seeded automatically): `demo@baseweight.app` / `demo1234`
 
 Accounts, sessions, locker items, and trips are stored in Postgres. Sign in (or register) from the **Account** section on the home page.
 
+**LighterPack CSV:** On Packs → Import CSV. Export from LighterPack via Share → Export to CSV. Items can optionally copy into your inventory too.
+
 ## Deploy for testing (Render DB + Vercel app)
 
 ### 1) Render Postgres

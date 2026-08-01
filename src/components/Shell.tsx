@@ -130,7 +130,7 @@ export function Shell({
               <button
                 type="button"
                 onClick={() => go(user ? "dashboard" : "account")}
-                className="hidden max-w-[9rem] truncate rounded-full border border-white/40 bg-white/25 px-3 py-1.5 text-sm text-ink backdrop-blur-sm transition hover:bg-white/40 sm:block"
+                className="hidden max-w-[9rem] truncate rounded-full border border-black/10 bg-white/90 px-3 py-1.5 text-sm text-ink transition hover:bg-white sm:block"
                 title={user ? user.email : "Sign in"}
               >
                 {user ? user.name : "Sign in"}
