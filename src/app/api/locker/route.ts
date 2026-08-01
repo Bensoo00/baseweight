@@ -1,9 +1,10 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { lockerItems } from "@/db/schema";
 import { seedIfEmpty } from "@/db/seed";
+import { requireUser } from "@/lib/auth";
 import { CATEGORIES } from "@/lib/units";
 
 const lockerSchema = z.object({
@@ -21,9 +22,13 @@ const lockerSchema = z.object({
 
 export async function GET() {
   await seedIfEmpty();
+  const { user, error } = await requireUser();
+  if (error) return error;
+
   const items = await db
     .select()
     .from(lockerItems)
+    .where(eq(lockerItems.userId, user.id))
     .orderBy(desc(lockerItems.createdAt));
   const totalGrams = items.reduce(
     (sum, i) => sum + i.weightGrams * i.quantity,
@@ -45,23 +50,35 @@ export async function GET() {
 
 export async function POST(request: Request) {
   await seedIfEmpty();
+  const { user, error } = await requireUser();
+  if (error) return error;
+
   const parsed = lockerSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
   const [item] = await db
     .insert(lockerItems)
-    .values({ ...parsed.data, createdAt: new Date().toISOString() })
+    .values({
+      ...parsed.data,
+      userId: user.id,
+      createdAt: new Date().toISOString(),
+    })
     .returning();
   return NextResponse.json({ item }, { status: 201 });
 }
 
 export async function DELETE(request: Request) {
   await seedIfEmpty();
+  const { user, error } = await requireUser();
+  if (error) return error;
+
   const id = Number(new URL(request.url).searchParams.get("id"));
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
-  await db.delete(lockerItems).where(eq(lockerItems.id, id));
+  await db
+    .delete(lockerItems)
+    .where(and(eq(lockerItems.id, id), eq(lockerItems.userId, user.id)));
   return NextResponse.json({ ok: true });
 }

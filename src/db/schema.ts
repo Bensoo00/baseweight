@@ -5,7 +5,32 @@ import {
   pgTable,
   serial,
   text,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+export const users = pgTable(
+  "users",
+  {
+    id: serial("id").primaryKey(),
+    email: text("email").notNull(),
+    name: text("name").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [uniqueIndex("users_email_idx").on(table.email)],
+);
+
+export const sessions = pgTable("sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  token: text("token").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
 
 export const trails = pgTable("trails", {
   id: serial("id").primaryKey(),
@@ -67,6 +92,7 @@ export const catalogItems = pgTable("catalog_items", {
 /** Permanent owned inventory — not a trip pack. */
 export const lockerItems = pgTable("locker_items", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
   name: text("name").notNull(),
   brand: text("brand").notNull().default(""),
   category: text("category", {
@@ -99,6 +125,7 @@ export const lockerItems = pgTable("locker_items", {
 
 export const trips = pgTable("trips", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
   name: text("name").notNull(),
   trailId: integer("trail_id"),
   nights: integer("nights").notNull().default(2),
@@ -155,6 +182,7 @@ export const tripItems = pgTable("trip_items", {
 /** Community shakedown / pack share feed */
 export const communityPosts = pgTable("community_posts", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id"),
   tripId: integer("trip_id"),
   shareSlug: text("share_slug").notNull(),
   title: text("title").notNull(),
@@ -175,6 +203,7 @@ export const communityPosts = pgTable("community_posts", {
 export const communityComments = pgTable("community_comments", {
   id: serial("id").primaryKey(),
   postId: integer("post_id").notNull(),
+  userId: integer("user_id"),
   authorName: text("author_name").notNull(),
   body: text("body").notNull(),
   createdAt: text("created_at")
@@ -182,6 +211,43 @@ export const communityComments = pgTable("community_comments", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+/** Post-trip journal — what worked / didn’t with optional gear notes. */
+export const journalEntries = pgTable("journal_entries", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  tripId: integer("trip_id"),
+  title: text("title").notNull(),
+  trailName: text("trail_name").notNull().default(""),
+  rating: text("rating", {
+    enum: ["great", "ok", "rough"],
+  })
+    .notNull()
+    .default("ok"),
+  summary: text("summary").notNull().default(""),
+  whatWorked: text("what_worked").notNull().default(""),
+  whatDidnt: text("what_didnt").notNull().default(""),
+  happenedAt: text("happened_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString().slice(0, 10)),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
+export const journalGearNotes = pgTable("journal_gear_notes", {
+  id: serial("id").primaryKey(),
+  entryId: integer("entry_id").notNull(),
+  itemName: text("item_name").notNull(),
+  brand: text("brand").notNull().default(""),
+  category: text("category").notNull().default("other"),
+  verdict: text("verdict", {
+    enum: ["worked", "mixed", "failed"],
+  }).notNull(),
+  note: text("note").notNull().default(""),
+});
+
+export type User = typeof users.$inferSelect;
+export type PublicUser = Pick<User, "id" | "email" | "name" | "createdAt">;
 export type Trail = typeof trails.$inferSelect;
 export type CatalogItem = typeof catalogItems.$inferSelect;
 export type LockerItem = typeof lockerItems.$inferSelect;
@@ -189,6 +255,8 @@ export type Trip = typeof trips.$inferSelect;
 export type TripItem = typeof tripItems.$inferSelect;
 export type CommunityPost = typeof communityPosts.$inferSelect;
 export type CommunityComment = typeof communityComments.$inferSelect;
+export type JournalEntry = typeof journalEntries.$inferSelect;
+export type JournalGearNote = typeof journalGearNotes.$inferSelect;
 export type NewLockerItem = typeof lockerItems.$inferInsert;
 export type NewTrip = typeof trips.$inferInsert;
 export type NewTripItem = typeof tripItems.$inferInsert;

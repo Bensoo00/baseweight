@@ -1,6 +1,6 @@
 # Baseweight
 
-Pack coach for backpackers and mountaineers — gear locker, trip packs, trail checks, community shakedowns.
+Pack coach for backpackers and mountaineers — pack lists first (LighterPack-style), optional trip assignment, gear inventory, trip journal, trail checks, and community shakedowns.
 
 ## Stack
 
@@ -25,6 +25,10 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+Demo account (seeded automatically): `demo@baseweight.app` / `demo1234`
+
+Accounts, sessions, locker items, and trips are stored in Postgres. Sign in (or register) from the **Account** section on the home page.
 
 ## Deploy for testing (Render DB + Vercel app)
 
@@ -66,5 +70,5 @@ In Vercel → Project → Domains → add `base-weight.net` and follow DNS instr
 | `npm run db:push` | Sync Drizzle schema to Postgres |
 | `npm run db:seed` | Seed trails/catalog/sample data if empty |
 | `npm run db:setup` | push + seed |
-| `npm run build` | push + seed + Next production build |
+| `npm run build` | Next production build |
 | `npm run dev` | local Next server |

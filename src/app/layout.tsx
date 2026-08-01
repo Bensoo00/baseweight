@@ -14,10 +14,10 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Baseweight — pack coach for real trails",
+  title: "Baseweight — packs, trips, and trail lessons",
   description:
-    "Gear locker, trip packs, trail gap checks, and a community shakedown feed — with oz/g toggle and shareable lists.",
-};
+    "Build pack lists, assign trips when you need them, journal what worked, and run trail gap checks — with oz/g toggle and shareable packs.",
+}
 
 export default function RootLayout({
   children,

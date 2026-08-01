@@ -65,6 +65,24 @@ export const db = new Proxy({} as AppDb, {
 });
 
 const CREATE_SQL = `
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email TEXT NOT NULL,
+  name TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users (email);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  token TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS sessions_token_idx ON sessions (token);
+
 CREATE TABLE IF NOT EXISTS trails (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
@@ -101,6 +119,7 @@ CREATE TABLE IF NOT EXISTS catalog_items (
 
 CREATE TABLE IF NOT EXISTS locker_items (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER,
   name TEXT NOT NULL,
   brand TEXT NOT NULL DEFAULT '',
   category TEXT NOT NULL,
@@ -116,6 +135,7 @@ CREATE TABLE IF NOT EXISTS locker_items (
 
 CREATE TABLE IF NOT EXISTS trips (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER,
   name TEXT NOT NULL,
   trail_id INTEGER,
   nights INTEGER NOT NULL DEFAULT 2,
@@ -145,6 +165,7 @@ CREATE TABLE IF NOT EXISTS trip_items (
 
 CREATE TABLE IF NOT EXISTS community_posts (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER,
   trip_id INTEGER,
   share_slug TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -163,10 +184,42 @@ CREATE TABLE IF NOT EXISTS community_posts (
 CREATE TABLE IF NOT EXISTS community_comments (
   id SERIAL PRIMARY KEY,
   post_id INTEGER NOT NULL,
+  user_id INTEGER,
   author_name TEXT NOT NULL,
   body TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS journal_entries (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  trip_id INTEGER,
+  title TEXT NOT NULL,
+  trail_name TEXT NOT NULL DEFAULT '',
+  rating TEXT NOT NULL DEFAULT 'ok',
+  summary TEXT NOT NULL DEFAULT '',
+  what_worked TEXT NOT NULL DEFAULT '',
+  what_didnt TEXT NOT NULL DEFAULT '',
+  happened_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS journal_gear_notes (
+  id SERIAL PRIMARY KEY,
+  entry_id INTEGER NOT NULL,
+  item_name TEXT NOT NULL,
+  brand TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'other',
+  verdict TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT ''
+);
+`;
+
+const MIGRATE_SQL = `
+ALTER TABLE locker_items ADD COLUMN IF NOT EXISTS user_id INTEGER;
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS user_id INTEGER;
+ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS user_id INTEGER;
+ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS user_id INTEGER;
 `;
 
 export async function ensureSchema() {
@@ -174,6 +227,7 @@ export async function ensureSchema() {
     globalForDb.__baseweightSchemaReady = (async () => {
       const pool = getPool();
       await pool.query(CREATE_SQL);
+      await pool.query(MIGRATE_SQL);
     })().catch((error) => {
       globalForDb.__baseweightSchemaReady = undefined;
       throw error;

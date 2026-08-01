@@ -17,6 +17,10 @@ export function CloneShareButton({
   function clone() {
     startTransition(async () => {
       const res = await fetch(`/api/share/${slug}/clone`, { method: "POST" });
+      if (res.status === 401) {
+        router.push("/#account");
+        return;
+      }
       const data = await res.json();
       if (data.trip?.trip?.id) {
         router.push(`/trips/${data.trip.trip.id}`);

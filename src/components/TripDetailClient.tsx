@@ -152,8 +152,8 @@ export function TripDetailClient({
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
-          <Link href="/trips" className="text-sm text-ink-soft hover:text-ink">
-            ← All trips
+          <Link href="/#packs" className="text-sm text-ink-soft hover:text-ink">
+            ← All packs
           </Link>
           <input
             className="mt-3 w-full border-0 bg-transparent text-3xl font-semibold tracking-tight outline-none md:text-4xl"
@@ -185,6 +185,9 @@ export function TripDetailClient({
             <Megaphone size={16} />
             {published ? "Posted" : "Post to community"}
           </button>
+          <Link href="/#journal" className="pill pill-soft">
+            Log in journal
+          </Link>
           <Link
             href={`/s/${detail.trip.shareSlug}`}
             className="pill pill-cta"

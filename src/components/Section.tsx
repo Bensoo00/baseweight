@@ -27,14 +27,13 @@ export function Section({
       }`}
     >
       {tone !== "hero" && (
-        <div className="mb-8 grid gap-4 md:grid-cols-[0.75fr_1.25fr] md:items-end">
-          <div>
-            <p className="serif-label opacity-80">{eyebrow}</p>
-            <p className="mt-1 text-xs opacity-55">({index})</p>
-          </div>
-          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+        <div className="mb-7">
+          <p className="serif-label text-ink-soft">{eyebrow}</p>
+          <p className="mt-0.5 text-xs text-ink-soft/70">({index})</p>
+          <h2 className="mt-3 max-w-2xl text-2xl font-semibold tracking-tight md:text-3xl">
             {title}
           </h2>
+          <div className="glass-divider mt-6" />
         </div>
       )}
       {children}

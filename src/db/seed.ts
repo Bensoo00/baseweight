@@ -1,14 +1,19 @@
-import { count, eq } from "drizzle-orm";
+import { count, eq, isNull } from "drizzle-orm";
 import { db, ensureSchema } from "./index";
 import {
   catalogItems,
   communityComments,
   communityPosts,
+  journalEntries,
+  journalGearNotes,
   lockerItems,
   trails,
   tripItems,
   trips,
+  users,
 } from "./schema";
+import { hashPassword } from "@/lib/auth";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demo";
 import { shareSlug } from "@/lib/ids";
 import { computePackStats, tripItemsToPackable } from "@/lib/pack-stats";
 
@@ -507,13 +512,51 @@ const starterLocker = [
   },
 ];
 
+async function ensureDemoUser() {
+  const existing = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, DEMO_EMAIL))
+    .limit(1);
+  if (existing[0]) return existing[0];
+
+  const [user] = await db
+    .insert(users)
+    .values({
+      email: DEMO_EMAIL,
+      name: "Demo Hiker",
+      passwordHash: await hashPassword(DEMO_PASSWORD),
+      createdAt: new Date().toISOString(),
+    })
+    .returning();
+  return user;
+}
+
+async function claimOrphanRows(userId: number) {
+  await db
+    .update(lockerItems)
+    .set({ userId })
+    .where(isNull(lockerItems.userId));
+  await db.update(trips).set({ userId }).where(isNull(trips.userId));
+  await db
+    .update(communityPosts)
+    .set({ userId })
+    .where(isNull(communityPosts.userId));
+  await db
+    .update(communityComments)
+    .set({ userId })
+    .where(isNull(communityComments.userId));
+}
+
 export async function seedIfEmpty() {
   await ensureSchema();
+  const demo = await ensureDemoUser();
+  await claimOrphanRows(demo.id);
+
   const [{ value: trailCount }] = await db.select({ value: count() }).from(trails);
   if (trailCount === 0) {
     await db.insert(trails).values(trailSeed);
   } else {
-    // Backfill trail requirement fields if null-ish on older rows
     const existing = await db.select().from(trails);
     for (const trail of existing) {
       const match = trailSeed.find((t) => t.name === trail.name);
@@ -538,11 +581,15 @@ export async function seedIfEmpty() {
     await db.insert(catalogItems).values(catalogSeed);
   }
 
-  const existingLocker = await db.select().from(lockerItems);
+  const existingLocker = await db
+    .select()
+    .from(lockerItems)
+    .where(eq(lockerItems.userId, demo.id));
   if (existingLocker.length === 0) {
     await db.insert(lockerItems).values(
       starterLocker.map((item) => ({
         ...item,
+        userId: demo.id,
         createdAt: new Date().toISOString(),
       })),
     );
@@ -557,21 +604,30 @@ export async function seedIfEmpty() {
       await db.insert(lockerItems).values(
         missing.map((item) => ({
           ...item,
+          userId: demo.id,
           createdAt: new Date().toISOString(),
         })),
       );
     }
   }
 
-  const [{ value: tripCount }] = await db.select({ value: count() }).from(trips);
-  const locker = await db.select().from(lockerItems);
-  if (tripCount === 0) {
+  const demoTrips = await db
+    .select()
+    .from(trips)
+    .where(eq(trips.userId, demo.id));
+  const locker = await db
+    .select()
+    .from(lockerItems)
+    .where(eq(lockerItems.userId, demo.id));
+
+  if (demoTrips.length === 0) {
     const allTrails = await db.select().from(trails);
     const jmt = allTrails.find((t) => t.name === "John Muir Trail");
     const now = new Date().toISOString();
     const [trip] = await db
       .insert(trips)
       .values({
+        userId: demo.id,
         name: "JMT Section — sample trip",
         trailId: jmt?.id ?? null,
         nights: 4,
@@ -602,10 +658,7 @@ export async function seedIfEmpty() {
       );
     }
   } else if (locker.length) {
-    // Keep sample trip in sync with newly added locker staples
-    const sample = (await db.select().from(trips)).find((t) =>
-      t.name.includes("sample trip"),
-    );
+    const sample = demoTrips.find((t) => t.name.includes("sample trip"));
     if (sample) {
       const packed = await db
         .select()
@@ -642,9 +695,10 @@ export async function seedIfEmpty() {
     .from(communityPosts);
   if (postCount === 0) {
     const sample =
-      (await db.select().from(trips)).find((t) =>
-        t.name.includes("sample trip"),
-      ) ?? (await db.select().from(trips))[0];
+      (
+        await db.select().from(trips).where(eq(trips.userId, demo.id))
+      ).find((t) => t.name.includes("sample trip")) ??
+      (await db.select().from(trips).where(eq(trips.userId, demo.id)))[0];
     if (sample) {
       const items = await db
         .select()
@@ -663,11 +717,12 @@ export async function seedIfEmpty() {
       const [post] = await db
         .insert(communityPosts)
         .values({
+          userId: demo.id,
           tripId: sample.id,
           shareSlug: sample.shareSlug,
           title: "JMT section shakedown — first draft",
           body: "Looking for cuts before I mail the bear can. Base feels heavy around the canister + pack. Roast me kindly.",
-          authorName: "ridgewalker",
+          authorName: "Demo Hiker",
           trailName: trail?.name ?? "John Muir Trail",
           nights: sample.nights,
           season: sample.season,
@@ -682,18 +737,78 @@ export async function seedIfEmpty() {
         await db.insert(communityComments).values([
           {
             postId: post.id,
+            userId: demo.id,
             authorName: "ozcounter",
             body: "Swap the Exos if you can — a frameless 40L would save real ounces if your food carries stay short.",
             createdAt: new Date().toISOString(),
           },
           {
             postId: post.id,
+            userId: demo.id,
             authorName: "trailmath",
             body: "Love seeing pack weight (total − worn) called out. Bar breakdown > pie chart forever.",
             createdAt: new Date().toISOString(),
           },
         ]);
       }
+    }
+  }
+
+  const [{ value: journalCount }] = await db
+    .select({ value: count() })
+    .from(journalEntries)
+    .where(eq(journalEntries.userId, demo.id));
+  if (journalCount === 0) {
+    const sample =
+      (
+        await db.select().from(trips).where(eq(trips.userId, demo.id))
+      ).find((t) => t.name.includes("sample")) ??
+      (await db.select().from(trips).where(eq(trips.userId, demo.id)))[0];
+    const [entry] = await db
+      .insert(journalEntries)
+      .values({
+        userId: demo.id,
+        tripId: sample?.id ?? null,
+        title: "First JMT section — lessons",
+        trailName: "John Muir Trail",
+        rating: "ok",
+        summary:
+          "Four nights, hot afternoons, cold canyon camps. Base felt honest until the bear can.",
+        whatWorked:
+          "Quilt loft was dialed. BeFree kept up at every creek. Fleece never came off on climbs.",
+        whatDidnt:
+          "Exos felt overbuilt for this food carry. Canister + frame pack stacked heavy.",
+        happenedAt: new Date().toISOString().slice(0, 10),
+        createdAt: new Date().toISOString(),
+      })
+      .returning();
+    if (entry) {
+      await db.insert(journalGearNotes).values([
+        {
+          entryId: entry.id,
+          itemName: "Exos 48",
+          brand: "Osprey",
+          category: "pack",
+          verdict: "mixed",
+          note: "Comfortable but heavier than needed.",
+        },
+        {
+          entryId: entry.id,
+          itemName: "Katabatic Flex 22",
+          brand: "Katabatic",
+          category: "sleep",
+          verdict: "worked",
+          note: "No cold spots at ~35°F.",
+        },
+        {
+          entryId: entry.id,
+          itemName: "BV500 BearVault",
+          brand: "BearVault",
+          category: "other",
+          verdict: "failed",
+          note: "Required, but killed the base-weight goal.",
+        },
+      ]);
     }
   }
 }

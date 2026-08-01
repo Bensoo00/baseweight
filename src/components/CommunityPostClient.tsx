@@ -38,6 +38,10 @@ export function CommunityPostClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ authorName, body }),
       });
+      if (res.status === 401) {
+        router.push("/#account");
+        return;
+      }
       const data = await res.json();
       if (data.comments) {
         setComments(data.comments);
@@ -51,6 +55,10 @@ export function CommunityPostClient({
       const res = await fetch(`/api/community/${post.id}/clone`, {
         method: "POST",
       });
+      if (res.status === 401) {
+        router.push("/#account");
+        return;
+      }
       const data = await res.json();
       if (data.trip?.trip?.id) {
         router.push(`/trips/${data.trip.trip.id}`);

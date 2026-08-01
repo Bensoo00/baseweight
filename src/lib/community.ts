@@ -8,6 +8,7 @@ import {
 } from "@/db/schema";
 import {
   cloneTripFromShare,
+  getOwnedTripDetail,
   getTripBySlug,
   getTripDetail,
 } from "@/lib/trips";
@@ -62,12 +63,13 @@ export async function getCommunityPost(id: number) {
 }
 
 export async function publishTripToCommunity(input: {
+  userId: number;
   tripId: number;
   authorName: string;
   title?: string;
   body?: string;
 }) {
-  const detail = await getTripDetail(input.tripId);
+  const detail = await getOwnedTripDetail(input.tripId, input.userId);
   if (!detail) return null;
 
   const existing = await db
@@ -77,6 +79,7 @@ export async function publishTripToCommunity(input: {
     .limit(1);
 
   const payload = {
+    userId: input.userId,
     tripId: detail.trip.id,
     shareSlug: detail.trip.shareSlug,
     title: input.title?.trim() || detail.trip.name,
@@ -106,6 +109,7 @@ export async function publishTripToCommunity(input: {
 
 export async function addComment(input: {
   postId: number;
+  userId: number;
   authorName: string;
   body: string;
 }): Promise<CommunityComment | null> {
@@ -115,6 +119,7 @@ export async function addComment(input: {
     .insert(communityComments)
     .values({
       postId: input.postId,
+      userId: input.userId,
       authorName: input.authorName.trim() || "Anonymous",
       body,
       createdAt: new Date().toISOString(),
@@ -123,7 +128,7 @@ export async function addComment(input: {
   return comment;
 }
 
-export async function cloneCommunityPost(postId: number) {
+export async function cloneCommunityPost(postId: number, userId: number) {
   const rows = await db
     .select()
     .from(communityPosts)
@@ -132,7 +137,7 @@ export async function cloneCommunityPost(postId: number) {
   const post = rows[0];
   if (!post) return null;
 
-  const trip = await cloneTripFromShare(post.shareSlug);
+  const trip = await cloneTripFromShare(post.shareSlug, userId);
   if (!trip) return null;
 
   await db

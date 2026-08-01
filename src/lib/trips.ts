@@ -1,4 +1,4 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   catalogItems,
@@ -34,12 +34,30 @@ async function getTrail(trailId: number | null) {
   return rows[0] ?? null;
 }
 
-export async function listTrips() {
-  return db.select().from(trips).orderBy(desc(trips.updatedAt));
+export async function listTrips(userId: number) {
+  return db
+    .select()
+    .from(trips)
+    .where(eq(trips.userId, userId))
+    .orderBy(desc(trips.updatedAt));
 }
 
 export async function getTripDetail(id: number): Promise<TripDetail | null> {
   const rows = await db.select().from(trips).where(eq(trips.id, id)).limit(1);
+  const trip = rows[0];
+  if (!trip) return null;
+  return hydrateTrip(trip);
+}
+
+export async function getOwnedTripDetail(
+  id: number,
+  userId: number,
+): Promise<TripDetail | null> {
+  const rows = await db
+    .select()
+    .from(trips)
+    .where(and(eq(trips.id, id), eq(trips.userId, userId)))
+    .limit(1);
   const trip = rows[0];
   if (!trip) return null;
   return hydrateTrip(trip);
@@ -77,19 +95,23 @@ async function hydrateTrip(trip: Trip): Promise<TripDetail> {
   return { trip, trail, items, stats, checks, upgrades };
 }
 
-export async function createTrip(input: {
-  name: string;
-  trailId?: number | null;
-  nights?: number;
-  season?: Trip["season"];
-  targetBaseWeightGrams?: number;
-  notes?: string;
-  seedFromLocker?: boolean;
-}) {
+export async function createTrip(
+  userId: number,
+  input: {
+    name: string;
+    trailId?: number | null;
+    nights?: number;
+    season?: Trip["season"];
+    targetBaseWeightGrams?: number;
+    notes?: string;
+    seedFromLocker?: boolean;
+  },
+) {
   const now = new Date().toISOString();
   const [trip] = await db
     .insert(trips)
     .values({
+      userId,
       name: input.name,
       trailId: input.trailId ?? null,
       nights: input.nights ?? 2,
@@ -103,7 +125,10 @@ export async function createTrip(input: {
     .returning();
 
   if (input.seedFromLocker) {
-    const locker = await db.select().from(lockerItems);
+    const locker = await db
+      .select()
+      .from(lockerItems)
+      .where(eq(lockerItems.userId, userId));
     if (locker.length) {
       await addLockerItemsToTrip(trip.id, locker);
     }
@@ -114,6 +139,7 @@ export async function createTrip(input: {
 
 export async function updateTrip(
   id: number,
+  userId: number,
   patch: Partial<
     Pick<
       Trip,
@@ -126,16 +152,23 @@ export async function updateTrip(
     >
   >,
 ) {
+  const owned = await getOwnedTripDetail(id, userId);
+  if (!owned) return null;
   await db
     .update(trips)
     .set({ ...patch, updatedAt: new Date().toISOString() })
-    .where(eq(trips.id, id));
+    .where(and(eq(trips.id, id), eq(trips.userId, userId)));
   return getTripDetail(id);
 }
 
-export async function deleteTrip(id: number) {
+export async function deleteTrip(id: number, userId: number) {
+  const owned = await getOwnedTripDetail(id, userId);
+  if (!owned) return false;
   await db.delete(tripItems).where(eq(tripItems.tripId, id));
-  await db.delete(trips).where(eq(trips.id, id));
+  await db
+    .delete(trips)
+    .where(and(eq(trips.id, id), eq(trips.userId, userId)));
+  return true;
 }
 
 export async function addLockerItemsToTrip(
@@ -165,6 +198,7 @@ export async function addLockerItemsToTrip(
 }
 
 export async function addCatalogToLockerAndTrip(options: {
+  userId: number;
   tripId?: number;
   name: string;
   brand: string;
@@ -177,6 +211,7 @@ export async function addCatalogToLockerAndTrip(options: {
   const [lockerItem] = await db
     .insert(lockerItems)
     .values({
+      userId: options.userId,
       name: options.name,
       brand: options.brand,
       category: options.category,
@@ -198,13 +233,14 @@ export async function addCatalogToLockerAndTrip(options: {
   return lockerItem;
 }
 
-export async function cloneTripFromShare(slug: string) {
+export async function cloneTripFromShare(slug: string, userId: number) {
   const source = await getTripBySlug(slug);
   if (!source) return null;
   const now = new Date().toISOString();
   const [trip] = await db
     .insert(trips)
     .values({
+      userId,
       name: `${source.trip.name} (copy)`,
       trailId: source.trip.trailId,
       nights: source.trip.nights,

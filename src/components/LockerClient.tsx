@@ -49,22 +49,21 @@ export function LockerClient({
     <div className="grid flex-1 gap-8 lg:grid-cols-[0.85fr_1.35fr]">
       <aside className="space-y-5">
         <div>
-          <p className="serif-label text-ink-soft">Gear locker</p>
+          <p className="serif-label text-ink-soft">Gear inventory</p>
           <p className="mt-1 text-xs text-ink-soft/70">
-            Virtual closet · sections collapse
+            Closet by category · collapse sections
           </p>
         </div>
 
         <div className="panel-ink p-6">
-          <div className="stat-number text-[var(--paper)]">{stats.itemCount}</div>
+          <div className="stat-number text-white">{stats.itemCount}</div>
           <div className="mt-2 font-semibold">Pieces owned</div>
           <p className="mt-2 text-sm text-white/65">
             <Weight grams={stats.totalGrams} /> total ·{" "}
             {formatUsd(stats.totalValueUsd)}
           </p>
           <p className="mt-5 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/85">
-            Keep gear here once, then drop it into any trip pack — the
-            closet/list split UL folks keep asking for.
+            Own it once here, then load pieces into any pack list.
           </p>
         </div>
 
@@ -72,18 +71,17 @@ export function LockerClient({
           <span className="arrow">
             <ArrowUpRight size={14} />
           </span>
-          Add to locker
+          Add gear
         </a>
       </aside>
 
       <section>
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <p className="max-w-md text-sm text-ink-soft">
-            Collapsible closet by category. Add pieces below, then pack them into
-            a trip.
+            Inventory by category. Add pieces below, then drop them into a pack.
           </p>
-          <a href="#trips" className="pill pill-soft w-fit">
-            Build a trip pack
+          <a href="#packs" className="pill pill-soft w-fit">
+            Build a pack
           </a>
         </div>
 
@@ -97,7 +95,7 @@ export function LockerClient({
             return (
               <div
                 key={category}
-                className="overflow-hidden rounded-[1.25rem] border border-black/8 bg-white/80"
+                className="glass-card-soft overflow-hidden"
               >
                 <button
                   type="button"

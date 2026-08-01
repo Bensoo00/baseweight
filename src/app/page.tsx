@@ -1,18 +1,22 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { AddGearForm } from "@/components/AddGearForm";
+import { AuthGate, AuthPanel } from "@/components/AuthPanel";
 import { CommunityFeed } from "@/components/CommunityFeed";
+import { JournalClient } from "@/components/JournalClient";
 import { LockerClient } from "@/components/LockerClient";
+import { PacksClient } from "@/components/PacksClient";
 import { Recommender } from "@/components/Recommender";
 import { Section } from "@/components/Section";
 import { Shell } from "@/components/Shell";
-import { TripsClient } from "@/components/TripsClient";
 import { Weight } from "@/components/UnitProvider";
 import { db } from "@/db";
 import { lockerItems } from "@/db/schema";
 import { seedIfEmpty } from "@/db/seed";
+import { getCurrentUser, toPublicUser } from "@/lib/auth";
 import { listCommunityPosts } from "@/lib/community";
+import { listJournalEntries } from "@/lib/journal";
 import { listTrails } from "@/lib/recommend";
 import { getTripDetail, listTrips } from "@/lib/trips";
 import { formatUsd } from "@/lib/units";
@@ -21,16 +25,25 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   await seedIfEmpty();
+  const currentUser = await getCurrentUser();
+  const user = currentUser ? toPublicUser(currentUser) : null;
 
-  const [locker, tripRows, trails, posts] = await Promise.all([
-    db.select().from(lockerItems).orderBy(desc(lockerItems.createdAt)),
-    listTrips(),
+  const [locker, tripRows, trails, posts, journal] = await Promise.all([
+    user
+      ? db
+          .select()
+          .from(lockerItems)
+          .where(eq(lockerItems.userId, user.id))
+          .orderBy(desc(lockerItems.createdAt))
+      : Promise.resolve([]),
+    user ? listTrips(user.id) : Promise.resolve([]),
     listTrails(),
     listCommunityPosts(),
+    user ? listJournalEntries(user.id) : Promise.resolve([]),
   ]);
 
   const details = await Promise.all(tripRows.map((t) => getTripDetail(t.id)));
-  const trips = details.filter(Boolean).map((d) => ({
+  const packs = details.filter(Boolean).map((d) => ({
     ...d!.trip,
     trail: d!.trail,
     stats: d!.stats,
@@ -38,7 +51,17 @@ export default async function HomePage() {
     warnCount: d!.checks.filter((c) => c.severity === "warn").length,
   }));
 
-  const latest = details[0] ?? null;
+  const packOptions = details.filter(Boolean).map((d) => ({
+    id: d!.trip.id,
+    name: d!.trip.name,
+    items: d!.items.map((i) => ({
+      name: i.name,
+      brand: i.brand,
+      category: i.category,
+    })),
+  }));
+
+  const mainPack = details[0] ?? null;
   const lockerValue = locker.reduce((s, i) => s + i.priceUsd * i.quantity, 0);
   const lockerSummary = {
     itemCount: locker.reduce((sum, i) => sum + i.quantity, 0),
@@ -47,142 +70,216 @@ export default async function HomePage() {
   };
 
   return (
-    <Shell>
-      {/* 01 Hero */}
+    <Shell user={user}>
+      {/* Hero */}
       <section id="home" className="onepager-section onepager-section-hero">
         <div className="topo-hero absolute inset-0" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/20" />
-        <div className="relative z-10 px-6 pb-14 pt-24 text-center md:px-10">
-          <p className="serif-label animate-rise text-white/75">Baseweight</p>
-          <h1 className="animate-rise animate-rise-delay-1 mx-auto mt-4 max-w-3xl text-4xl font-semibold tracking-tight md:text-6xl">
-            Know every ounce before you hit the trail.
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+        <div className="relative z-10 px-6 pb-12 pt-20 text-center md:px-10">
+          <p className="serif-label animate-rise text-white/80">Baseweight</p>
+          <h1 className="animate-rise animate-rise-delay-1 mx-auto mt-4 max-w-3xl font-[family-name:var(--font-fraunces)] text-4xl font-semibold tracking-tight md:text-6xl">
+            Pack lighter. Learn every trip.
           </h1>
-          <p className="animate-rise animate-rise-delay-2 mx-auto mt-5 max-w-xl text-base text-white/80 md:text-lg">
-            One page for your locker, trip packs, coach, and community
-            shakedowns — scroll to use everything.
+          <p className="animate-rise animate-rise-delay-2 mx-auto mt-5 max-w-lg text-base text-white/80 md:text-lg">
+            Build packs, assign trips when you need them, and journal what
+            actually worked on trail.
           </p>
           <div className="animate-rise animate-rise-delay-3 mt-8 flex flex-wrap items-center justify-center gap-3">
-            <a href="#locker" className="pill pill-cta">
+            <a
+              href={user ? "#packs" : "#account"}
+              className="pill pill-cta"
+            >
               <span className="arrow">
                 <ArrowRight size={14} />
               </span>
-              Start with locker
+              {user ? "Open packs" : "Sign in"}
             </a>
-            <a href="#trips" className="pill pill-ghost">
-              Jump to trips
+            <a href="#dashboard" className="pill pill-ghost">
+              Dashboard
             </a>
           </div>
         </div>
       </section>
 
-      {/* 02 Snapshot */}
+      {/* Dashboard */}
       <Section
-        id="snapshot"
-        index="01 — 04"
-        eyebrow="Snapshot"
-        title="Your kit at a glance — then keep scrolling to manage it."
+        id="dashboard"
+        index="01"
+        eyebrow="Dashboard"
+        title="Your kit snapshot — packs first, trips when you need them."
       >
-        <div className="grid gap-8 border-t border-black/8 pt-8 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3">
           {[
             {
-              value: latest ? (
-                <Weight grams={latest.stats.baseWeightGrams} />
+              value: mainPack ? (
+                <Weight grams={mainPack.stats.baseWeightGrams} />
               ) : (
                 "—"
               ),
-              label: "Latest base weight",
-              detail: latest?.trip.name ?? "Create a trip pack below.",
+              label: "Main pack base",
+              detail: mainPack?.trip.name ?? "Create a pack to see weight.",
+              href: "#packs",
             },
             {
-              value: String(lockerSummary.itemCount),
-              label: "Locker pieces",
-              detail: `${formatUsd(lockerValue)} in owned gear ready to pack.`,
+              value: String(packs.length),
+              label: "Pack lists",
+              detail: user
+                ? `${lockerSummary.itemCount} gear pieces ready to load.`
+                : "Sign in to manage packs.",
+              href: "#packs",
             },
             {
-              value: String(posts.length),
-              label: "Community posts",
-              detail: "Shakedowns you can read, comment, and clone.",
+              value: String(journal.length),
+              label: "Journal entries",
+              detail: "Trail notes on what to keep or cut.",
+              href: "#journal",
             },
           ].map((stat, i) => (
-            <div
+            <a
               key={stat.label}
-              className={`animate-rise animate-rise-delay-${i + 1}`}
+              href={stat.href}
+              className={`glass-card block p-5 transition hover:-translate-y-0.5 animate-rise animate-rise-delay-${i + 1}`}
             >
               <div className="stat-number">{stat.value}</div>
               <div className="mt-3 font-semibold">{stat.label}</div>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
                 {stat.detail}
               </p>
-            </div>
+            </a>
           ))}
         </div>
-        <div className="mt-10 h-14 overflow-hidden rounded-[1.4rem] bg-gradient-to-r from-[#2f4a3c] via-[#5f7f6e] to-[#c6f06a]" />
-      </Section>
 
-      {/* 03 Locker */}
-      <Section
-        id="locker"
-        index="02 — 04"
-        eyebrow="Gear locker"
-        title="Own it once. Drop it into any trip later."
-        tone="ink"
-      >
-        <div className="rounded-[1.5rem] bg-[var(--paper)] p-4 text-ink md:p-6">
-          <LockerClient initialItems={locker} summary={lockerSummary} />
-          <div id="add-gear" className="mt-10 scroll-mt-24 border-t border-black/8 pt-8">
-            <h3 className="mb-4 text-xl font-semibold tracking-tight">
-              Add gear
-            </h3>
-            <AddGearForm />
+        {mainPack && (
+          <div className="glass-card mt-4 flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-ink-soft">
+                Main pack
+              </p>
+              <p className="mt-1 text-xl font-semibold tracking-tight">
+                {mainPack.trip.name}
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">
+                <Weight grams={mainPack.stats.baseWeightGrams} /> base ·{" "}
+                {mainPack.stats.committedCount} items ·{" "}
+                {formatUsd(mainPack.stats.totalValueUsd)}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/trips/${mainPack.trip.id}`} className="pill pill-cta">
+                <span className="arrow">
+                  <ArrowRight size={14} />
+                </span>
+                Edit pack
+              </Link>
+              <a href="#journal" className="pill pill-soft">
+                Log a trip
+              </a>
+            </div>
           </div>
-        </div>
-      </Section>
+        )}
 
-      {/* 04 Trips */}
-      <Section
-        id="trips"
-        index="03 — 04"
-        eyebrow="Trip packs"
-        title="Build a pack for the trail — checks and share links included."
-      >
-        <TripsClient initialTrips={trips} trails={trails} />
-        {latest && (
-          <p className="mt-6 text-sm text-ink-soft">
-            Tip: open a trip for full editing, gap checks, and{" "}
-            <Link href={`/s/${latest.trip.shareSlug}`} className="underline">
-              public share view
-            </Link>
-            .
-          </p>
+        {!user && (
+          <div id="account" className="glass-card mt-4 scroll-mt-24 p-5">
+            <AuthPanel user={user} />
+          </div>
         )}
       </Section>
 
-      {/* 05 Coach */}
+      {user && (
+        <Section
+          id="account"
+          index="02"
+          eyebrow="Account"
+          title="You’re signed in — gear stays private to this login."
+        >
+          <div className="glass-card p-5">
+            <AuthPanel user={user} />
+          </div>
+        </Section>
+      )}
+
+      {/* Packs */}
+      <Section
+        id="packs"
+        index="03"
+        eyebrow="Packs"
+        title="Make a pack list. Assign a trip only if you need one."
+      >
+        <AuthGate
+          user={user}
+          message="Sign in to create and edit your pack lists."
+        >
+          <PacksClient initialPacks={packs} trails={trails} />
+        </AuthGate>
+      </Section>
+
+      {/* Gear inventory */}
+      <Section
+        id="gear"
+        index="04"
+        eyebrow="Gear inventory"
+        title="Your closet — add once, drop into any pack."
+      >
+        <AuthGate
+          user={user}
+          message="Sign in to manage gear you own."
+        >
+          <div className="glass-card p-4 md:p-6">
+            <LockerClient initialItems={locker} summary={lockerSummary} />
+            <div
+              id="add-gear"
+              className="mt-10 scroll-mt-24 border-t border-white/30 pt-8"
+            >
+              <h3 className="mb-4 text-xl font-semibold tracking-tight">
+                Add gear
+              </h3>
+              <AddGearForm />
+            </div>
+          </div>
+        </AuthGate>
+      </Section>
+
+      {/* Journal */}
+      <Section
+        id="journal"
+        index="05"
+        eyebrow="Trip journal"
+        title="Record what worked, what didn’t, and which pieces to rethink."
+      >
+        <AuthGate
+          user={user}
+          message="Sign in to keep a trip journal tied to your packs."
+        >
+          <JournalClient initialEntries={journal} packs={packOptions} />
+        </AuthGate>
+      </Section>
+
+      {/* Coach */}
       <Section
         id="coach"
-        index="04 — 04"
+        index="06"
         eyebrow="Pack coach"
-        title="Tell us the trip constraints. We’ll shortlist the kit."
-        tone="ink"
+        title="Constraints in, shortlisted kit out."
       >
-        <div className="rounded-[1.5rem] bg-[var(--paper)] p-4 text-ink md:p-6">
+        <div className="glass-card p-4 md:p-6">
           <Recommender trails={trails} />
         </div>
       </Section>
 
-      {/* 06 Community */}
+      {/* Community */}
       <Section
         id="community"
-        index="05"
+        index="07"
         eyebrow="Community"
-        title="Shakedowns, comments, and copyable packs."
+        title="Shakedowns you can read, comment, and clone."
       >
-        <CommunityFeed posts={posts} />
+        <div className="glass-card p-4 md:p-6">
+          <CommunityFeed posts={posts} />
+        </div>
       </Section>
 
-      <footer className="border-t border-black/8 px-6 py-10 text-center text-sm text-ink-soft md:px-10">
-        Baseweight — pack coach for real trails. Use the taskbar to jump
-        sections.
+      <footer className="px-6 py-10 text-center text-sm text-ink-soft md:px-10">
+        Baseweight — packs, trips, and trail lessons in one glass frame.
       </footer>
     </Shell>
   );

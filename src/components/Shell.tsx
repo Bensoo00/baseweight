@@ -4,19 +4,22 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Backpack,
-  Home,
+  BookOpen,
+  LayoutDashboard,
   MessageSquare,
   Package,
   Sparkles,
 } from "lucide-react";
 import { UnitToggle } from "@/components/UnitProvider";
+import type { PublicUser } from "@/db/schema";
 
 const tabs = [
-  { id: "home", label: "Home", icon: Home },
-  { id: "locker", label: "Locker", icon: Package },
-  { id: "trips", label: "Trips", icon: Backpack },
+  { id: "dashboard", label: "Home", icon: LayoutDashboard },
+  { id: "packs", label: "Packs", icon: Backpack },
+  { id: "gear", label: "Gear", icon: Package },
+  { id: "journal", label: "Journal", icon: BookOpen },
   { id: "coach", label: "Coach", icon: Sparkles },
-  { id: "community", label: "Community", icon: MessageSquare },
+  { id: "community", label: "Feed", icon: MessageSquare },
 ];
 
 function scrollToId(id: string) {
@@ -27,22 +30,33 @@ function scrollToId(id: string) {
   return true;
 }
 
+const hashAliases: Record<string, string> = {
+  home: "dashboard",
+  snapshot: "dashboard",
+  locker: "gear",
+  trips: "packs",
+  account: "dashboard",
+};
+
 export function Shell({
   children,
+  user = null,
 }: {
   children: React.ReactNode;
+  user?: PublicUser | null;
   tone?: "light" | "dark";
   active?: string;
 }) {
   const pathname = usePathname() || "/";
   const router = useRouter();
   const isOnePager = pathname === "/";
-  const [active, setActive] = useState("home");
+  const [active, setActive] = useState("dashboard");
 
   useEffect(() => {
     if (!isOnePager) return;
 
-    const hash = window.location.hash.replace("#", "");
+    const raw = window.location.hash.replace("#", "");
+    const hash = hashAliases[raw] ?? raw;
     if (hash) {
       setActive(hash);
       requestAnimationFrame(() => scrollToId(hash));
@@ -88,10 +102,10 @@ export function Shell({
           <header className="bloom-header">
             <button
               type="button"
-              onClick={() => go("home")}
+              onClick={() => go("dashboard")}
               className="flex min-w-0 items-center gap-2.5"
             >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink text-xs font-semibold text-lichen">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[rgba(16,32,24,0.88)] text-xs font-semibold text-lichen">
                 Bw
               </span>
               <span className="truncate font-[family-name:var(--font-fraunces)] text-xl tracking-tight text-ink">
@@ -99,33 +113,39 @@ export function Shell({
               </span>
             </button>
 
-            <nav className="hidden items-center gap-1 md:flex">
+            <nav className="nav-glass" aria-label="Sections">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
-                  className="rounded-full px-3 py-1.5 text-sm transition"
+                  data-active={isOnePager && active === tab.id}
                   onClick={() => go(tab.id)}
-                  style={{
-                    background:
-                      isOnePager && active === tab.id
-                        ? "var(--ink)"
-                        : "transparent",
-                    color:
-                      isOnePager && active === tab.id
-                        ? "white"
-                        : "var(--ink-soft)",
-                  }}
                 >
                   {tab.label}
                 </button>
               ))}
             </nav>
 
-            <UnitToggle />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => go(user ? "dashboard" : "account")}
+                className="hidden max-w-[9rem] truncate rounded-full border border-white/40 bg-white/25 px-3 py-1.5 text-sm text-ink backdrop-blur-sm transition hover:bg-white/40 sm:block"
+                title={user ? user.email : "Sign in"}
+              >
+                {user ? user.name : "Sign in"}
+              </button>
+              <UnitToggle />
+            </div>
           </header>
 
-          <div className={isOnePager ? "onepager-scroll" : "flex flex-1 flex-col overflow-y-auto pb-[4.75rem]"}>
+          <div
+            className={
+              isOnePager
+                ? "onepager-scroll"
+                : "flex flex-1 flex-col overflow-y-auto pb-[4.75rem]"
+            }
+          >
             {children}
           </div>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { seedIfEmpty } from "@/db/seed";
+import { requireUser } from "@/lib/auth";
 import { createTrip, getTripDetail, listTrips } from "@/lib/trips";
 
 const createSchema = z.object({
@@ -15,7 +16,10 @@ const createSchema = z.object({
 
 export async function GET() {
   await seedIfEmpty();
-  const trips = await listTrips();
+  const { user, error } = await requireUser();
+  if (error) return error;
+
+  const trips = await listTrips(user.id);
   const details = await Promise.all(trips.map((t) => getTripDetail(t.id)));
   return NextResponse.json({
     trips: details.filter(Boolean).map((d) => ({
@@ -30,10 +34,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   await seedIfEmpty();
+  const { user, error } = await requireUser();
+  if (error) return error;
+
   const parsed = createSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const detail = await createTrip(parsed.data);
+  const detail = await createTrip(user.id, parsed.data);
   return NextResponse.json({ trip: detail }, { status: 201 });
 }

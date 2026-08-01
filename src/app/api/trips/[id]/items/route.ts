@@ -4,7 +4,8 @@ import { z } from "zod";
 import { db } from "@/db";
 import { lockerItems, tripItems, trips } from "@/db/schema";
 import { seedIfEmpty } from "@/db/seed";
-import { addLockerItemsToTrip, getTripDetail } from "@/lib/trips";
+import { requireUser } from "@/lib/auth";
+import { addLockerItemsToTrip, getOwnedTripDetail } from "@/lib/trips";
 
 const addSchema = z.object({
   lockerItemIds: z.array(z.number().int().positive()).min(1),
@@ -22,7 +23,15 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, { params }: Params) {
   await seedIfEmpty();
+  const { user, error } = await requireUser();
+  if (error) return error;
+
   const tripId = Number((await params).id);
+  const owned = await getOwnedTripDetail(tripId, user.id);
+  if (!owned) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const parsed = addSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -31,16 +40,28 @@ export async function POST(request: Request, { params }: Params) {
   const items = await db
     .select()
     .from(lockerItems)
-    .where(inArray(lockerItems.id, parsed.data.lockerItemIds));
+    .where(
+      and(
+        eq(lockerItems.userId, user.id),
+        inArray(lockerItems.id, parsed.data.lockerItemIds),
+      ),
+    );
 
   await addLockerItemsToTrip(tripId, items);
-  const detail = await getTripDetail(tripId);
-  return NextResponse.json(detail);
+  return NextResponse.json(await getOwnedTripDetail(tripId, user.id));
 }
 
 export async function PATCH(request: Request, { params }: Params) {
   await seedIfEmpty();
+  const { user, error } = await requireUser();
+  if (error) return error;
+
   const tripId = Number((await params).id);
+  const owned = await getOwnedTripDetail(tripId, user.id);
+  if (!owned) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const parsed = patchSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -65,14 +86,22 @@ export async function PATCH(request: Request, { params }: Params) {
   await db
     .update(trips)
     .set({ updatedAt: new Date().toISOString() })
-    .where(eq(trips.id, tripId));
+    .where(and(eq(trips.id, tripId), eq(trips.userId, user.id)));
 
-  return NextResponse.json(await getTripDetail(tripId));
+  return NextResponse.json(await getOwnedTripDetail(tripId, user.id));
 }
 
 export async function DELETE(request: Request, { params }: Params) {
   await seedIfEmpty();
+  const { user, error } = await requireUser();
+  if (error) return error;
+
   const tripId = Number((await params).id);
+  const owned = await getOwnedTripDetail(tripId, user.id);
+  if (!owned) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const itemId = Number(new URL(request.url).searchParams.get("itemId"));
   if (!itemId) {
     return NextResponse.json({ error: "Missing itemId" }, { status: 400 });
@@ -83,6 +112,6 @@ export async function DELETE(request: Request, { params }: Params) {
   await db
     .update(trips)
     .set({ updatedAt: new Date().toISOString() })
-    .where(eq(trips.id, tripId));
-  return NextResponse.json(await getTripDetail(tripId));
+    .where(and(eq(trips.id, tripId), eq(trips.userId, user.id)));
+  return NextResponse.json(await getOwnedTripDetail(tripId, user.id));
 }
