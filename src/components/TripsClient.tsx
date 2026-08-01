@@ -75,13 +75,9 @@ export function TripsClient({
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="serif-label text-ink-soft">Trip packs</p>
-          <h1 className="mt-2 max-w-xl text-3xl font-semibold tracking-tight md:text-4xl">
-            Pack for the trail — not a forever spreadsheet.
-          </h1>
-          <p className="mt-3 max-w-lg text-ink-soft">
-            Each trip pulls from your locker, runs gap checks against the route,
-            and gets a shareable link.
+          <p className="text-sm text-ink-soft">
+            Each trip pulls from your locker, runs gap checks, and gets a share
+            link.
           </p>
         </div>
         <button

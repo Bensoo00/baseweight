@@ -8,17 +8,6 @@ import { Weight } from "@/components/UnitProvider";
 export function CommunityFeed({ posts }: { posts: CommunityPostWithMeta[] }) {
   return (
     <div className="space-y-8">
-      <div className="max-w-2xl">
-        <p className="serif-label text-ink-soft">Community</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
-          Shakedowns, shares, and copyable packs.
-        </h1>
-        <p className="mt-3 text-ink-soft">
-          Publish a trip pack, get comments, and let others clone the list into
-          their own trips — the UL forum energy, without the pie charts.
-        </p>
-      </div>
-
       <div className="space-y-4">
         {posts.map((post) => (
           <Link

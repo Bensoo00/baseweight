@@ -97,13 +97,66 @@ textarea {
   position: relative;
   width: min(1200px, 100%);
   min-height: calc(100vh - 2 * clamp(0.65rem, 1.8vw, 1.1rem));
-  border-radius: calc(var(--radius) + 0.35rem);
+  border-radius: calc(var(--radius) + 0.55rem);
   background: var(--paper);
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: var(--shadow);
   overflow: clip;
   display: flex;
   flex-direction: column;
+}
+
+.bloom-shell {
+  border: 10px solid rgba(255, 255, 255, 0.9);
+  background: rgba(243, 239, 230, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.bloom-header {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  background: rgba(243, 239, 230, 0.82);
+  border-bottom: 1px solid rgba(18, 26, 22, 0.06);
+  backdrop-filter: blur(14px);
+}
+
+.onepager-scroll {
+  flex: 1;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding-bottom: 5.5rem;
+}
+
+.onepager-section {
+  padding: clamp(1.75rem, 4vw, 3rem) clamp(1.1rem, 3vw, 2.5rem);
+  scroll-margin-top: 4.5rem;
+}
+
+.onepager-section-paper {
+  background: transparent;
+  color: var(--ink);
+}
+
+.onepager-section-ink {
+  background: linear-gradient(160deg, #24362d 0%, #1a2820 55%, #152019 100%);
+  color: #f3efe6;
+}
+
+.onepager-section-hero {
+  min-height: min(78vh, 720px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0;
+  color: white;
+  position: relative;
+  overflow: hidden;
 }
 
 .app-shell[data-tone="dark"] {
@@ -334,7 +387,13 @@ textarea {
 }
 
 @media (max-width: 768px) {
-  .app-shell {
+  .app-shell,
+  .bloom-shell {
     border-radius: 1.1rem;
+    border-width: 6px;
+  }
+
+  .bloom-header {
+    padding: 0.75rem 0.9rem;
   }
 }

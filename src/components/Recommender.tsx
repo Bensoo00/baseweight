@@ -78,14 +78,6 @@ export function Recommender({ trails }: { trails: Trail[] }) {
   return (
     <div className="grid flex-1 gap-8 lg:grid-cols-[0.95fr_1.25fr]">
       <aside className="space-y-5">
-        <div>
-          <p className="serif-label text-ink-soft">Pack coach</p>
-          <p className="mt-1 text-xs text-ink-soft/70">SQL catalog · trail-aware</p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">
-            Tell us the trip. We&apos;ll shortlist the kit.
-          </h1>
-        </div>
-
         <div className="panel space-y-4 p-5">
           <label className="block space-y-2">
             <span className="text-sm font-semibold">Trail</span>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { ArrowUpRight, ChevronDown, Trash2 } from "lucide-react";
 import type { LockerItem } from "@/db/schema";
 import { Weight } from "@/components/UnitProvider";
@@ -69,22 +68,23 @@ export function LockerClient({
           </p>
         </div>
 
-        <Link href="/locker/add" className="pill pill-cta w-fit">
+        <a href="#add-gear" className="pill pill-cta w-fit">
           <span className="arrow">
             <ArrowUpRight size={14} />
           </span>
           Add to locker
-        </Link>
+        </a>
       </aside>
 
       <section>
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <h1 className="max-w-md text-3xl font-semibold tracking-tight">
-            Everything you own, ready to drop into a trip.
-          </h1>
-          <Link href="/trips" className="pill pill-soft w-fit">
+          <p className="max-w-md text-sm text-ink-soft">
+            Collapsible closet by category. Add pieces below, then pack them into
+            a trip.
+          </p>
+          <a href="#trips" className="pill pill-soft w-fit">
             Build a trip pack
-          </Link>
+          </a>
         </div>
 
         <div className="space-y-3">

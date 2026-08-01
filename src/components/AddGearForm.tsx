@@ -67,7 +67,7 @@ export function AddGearForm() {
         setError("Could not save gear. Check the fields and try again.");
         return;
       }
-      router.push("/locker");
+      router.push("/#locker");
       router.refresh();
     });
   }
