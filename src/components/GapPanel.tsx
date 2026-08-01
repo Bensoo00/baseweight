@@ -1,13 +1,11 @@
-import type { GapCheck, UpgradeSuggestion } from "@/lib/gap-checks";
-import { Weight } from "@/components/UnitProvider";
-import { CATEGORY_LABELS, formatUsd } from "@/lib/units";
+import type { GapCheck } from "@/lib/gap-checks";
 
 export function GapPanel({
   checks,
-  upgrades,
 }: {
   checks: GapCheck[];
-  upgrades: UpgradeSuggestion[];
+  /** @deprecated Ignored — upgrade suggestions removed (too often wrong). */
+  upgrades?: unknown;
 }) {
   const fails = checks.filter((c) => c.severity === "fail").length;
   const warns = checks.filter((c) => c.severity === "warn").length;
@@ -40,42 +38,12 @@ export function GapPanel({
             </span>
           </div>
         ))}
-      </div>
-
-      {upgrades.length > 0 && (
-        <div className="panel p-4">
-          <div className="text-sm font-semibold">Upgrade first</div>
-          <p className="mt-1 text-sm text-ink-soft">
-            Heaviest pieces with lighter catalog alternatives nearby in price.
+        {checks.length === 0 && (
+          <p className="text-sm text-ink-soft">
+            Assign a trail to run overnight and climate checks.
           </p>
-          <div className="mt-4 space-y-3">
-            {upgrades.map((u) => (
-              <div
-                key={`${u.currentName}-${u.suggestionName}`}
-                className="rounded-2xl bg-[var(--paper-2)] px-4 py-3"
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="font-semibold">
-                    {u.suggestionBrand} {u.suggestionName}
-                  </div>
-                  <div className="text-sm text-[var(--signal-pass)]">
-                    −<Weight grams={u.gramsSaved} />
-                  </div>
-                </div>
-                <div className="mt-1 text-sm text-ink-soft">
-                  Replace {u.currentName} (
-                  <Weight grams={u.currentWeightGrams} /> ·{" "}
-                  {formatUsd(u.currentPriceUsd)}) →{" "}
-                  <Weight grams={u.suggestionWeightGrams} /> ·{" "}
-                  {formatUsd(u.suggestionPriceUsd)} ·{" "}
-                  {CATEGORY_LABELS[u.category]}
-                </div>
-                <p className="mt-2 text-sm text-ink-soft">{u.reason}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

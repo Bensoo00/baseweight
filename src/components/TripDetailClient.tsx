@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -51,6 +51,8 @@ export function TripDetailClient({
   const { unit, format } = useUnit();
   const [detail, setDetail] = useState(initial);
   const [pending, startTransition] = useTransition();
+  const [shareReady, setShareReady] = useState(true);
+  const writeQueue = useRef(Promise.resolve());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -115,7 +117,13 @@ export function TripDetailClient({
     stats: PackStats,
     lockerSynced?: boolean,
   ) {
-    setDetail((prev) => ({ ...prev, items, stats }));
+    const updatedAt = new Date().toISOString();
+    setDetail((prev) => ({
+      ...prev,
+      items,
+      stats,
+      trip: { ...prev.trip, updatedAt },
+    }));
     if (lockerSynced) {
       window.dispatchEvent(new CustomEvent(LOCKER_UPDATED_EVENT));
     }
@@ -128,15 +136,38 @@ export function TripDetailClient({
     };
   }
 
+  function enqueueWrite(task: () => Promise<void>) {
+    setShareReady(false);
+    writeQueue.current = writeQueue.current
+      .then(task)
+      .catch(() => {})
+      .finally(() => {
+        // Only mark ready if this was the last queued write
+        void writeQueue.current.then(() => setShareReady(true));
+      });
+    return writeQueue.current;
+  }
+
+  function shareUrl() {
+    const stamp = detail.trip.updatedAt || new Date().toISOString();
+    return `${window.location.origin}/s/${detail.trip.shareSlug}?v=${encodeURIComponent(stamp)}`;
+  }
+
   function saveTrip(patch: Record<string, unknown>) {
     setDetail((prev) => ({
       ...prev,
-      trip: { ...prev.trip, ...patch } as Trip,
+      trip: {
+        ...prev.trip,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      } as Trip,
     }));
-    void fetch(`/api/trips/${detail.trip.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
+    void enqueueWrite(async () => {
+      await fetch(`/api/trips/${detail.trip.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
     });
   }
 
@@ -144,15 +175,15 @@ export function TripDetailClient({
     const picked = selected.slice();
     setSelected([]);
     setPickerOpen(false);
-    void fetch(`/api/trips/${detail.trip.id}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lockerItemIds: picked }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.items && data.stats) applyItemsStats(data.items, data.stats);
+    void enqueueWrite(async () => {
+      const res = await fetch(`/api/trips/${detail.trip.id}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lockerItemIds: picked }),
       });
+      const data = await res.json();
+      if (data.items && data.stats) applyItemsStats(data.items, data.stats);
+    });
   }
 
   function addDirectItem() {
@@ -166,17 +197,17 @@ export function TripDetailClient({
       weightGrams: 100,
       priceUsd: 0,
     }));
-    void fetch(`/api/trips/${detail.trip.id}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ item: payload }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.items && data.stats) {
-          applyItemsStats(data.items, data.stats, data.lockerSynced);
-        }
+    void enqueueWrite(async () => {
+      const res = await fetch(`/api/trips/${detail.trip.id}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item: payload }),
       });
+      const data = await res.json();
+      if (data.items && data.stats) {
+        applyItemsStats(data.items, data.stats, data.lockerSynced);
+      }
+    });
   }
 
   function patchItem(id: number, patch: Record<string, unknown>) {
@@ -186,43 +217,60 @@ export function TripDetailClient({
         item.id === id ? ({ ...item, ...patch } as TripItem) : item,
       );
       const { stats } = withLocalStats(items);
-      return { ...prev, items, stats };
+      return {
+        ...prev,
+        items,
+        stats,
+        trip: { ...prev.trip, updatedAt: new Date().toISOString() },
+      };
     });
 
-    void fetch(`/api/trips/${detail.trip.id}/items`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...patch }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.items && data.stats) {
-          applyItemsStats(data.items, data.stats, data.lockerSynced);
-        }
+    void enqueueWrite(async () => {
+      const res = await fetch(`/api/trips/${detail.trip.id}/items`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...patch }),
       });
+      const data = await res.json();
+      if (data.items && data.stats) {
+        applyItemsStats(data.items, data.stats, data.lockerSynced);
+      }
+    });
   }
 
   function removeItem(itemId: number) {
     setDetail((prev) => {
       const items = prev.items.filter((item) => item.id !== itemId);
       const { stats } = withLocalStats(items);
-      return { ...prev, items, stats };
+      return {
+        ...prev,
+        items,
+        stats,
+        trip: { ...prev.trip, updatedAt: new Date().toISOString() },
+      };
     });
     setOpenId(null);
-    void fetch(`/api/trips/${detail.trip.id}/items?itemId=${itemId}`, {
-      method: "DELETE",
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.items && data.stats) applyItemsStats(data.items, data.stats);
-      });
+    void enqueueWrite(async () => {
+      const res = await fetch(
+        `/api/trips/${detail.trip.id}/items?itemId=${itemId}`,
+        { method: "DELETE" },
+      );
+      const data = await res.json();
+      if (data.items && data.stats) applyItemsStats(data.items, data.stats);
+    });
   }
 
   async function copyShare() {
-    const url = `${window.location.origin}/s/${detail.trip.shareSlug}`;
+    await writeQueue.current;
+    const url = shareUrl();
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
+  }
+
+  async function openPublicView() {
+    await writeQueue.current;
+    window.open(shareUrl(), "_blank", "noopener,noreferrer");
   }
 
   function publish() {
@@ -273,7 +321,7 @@ export function TripDetailClient({
         <div className="flex flex-wrap gap-2">
           <button type="button" className="pill pill-soft" onClick={copyShare}>
             {copied ? <Check size={16} /> : <Share2 size={16} />}
-            {copied ? "Copied link" : "Share link"}
+            {copied ? "Copied link" : shareReady ? "Share link" : "Saving…"}
           </button>
           <button
             type="button"
@@ -286,16 +334,16 @@ export function TripDetailClient({
           <Link href="/#journal" className="pill pill-soft">
             Log in journal
           </Link>
-          <Link
-            href={`/s/${detail.trip.shareSlug}`}
+          <button
+            type="button"
             className="pill pill-cta"
-            target="_blank"
+            onClick={openPublicView}
           >
             <span className="arrow">
               <ArrowUpRight size={14} />
             </span>
-            Public view
-          </Link>
+            {shareReady ? "Public view" : "Saving…"}
+          </button>
         </div>
       </div>
 

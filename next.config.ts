@@ -10,6 +10,26 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Share / pack pages should never show a stale client-router snapshot.
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+      static: 30,
+    },
+  },
+  async headers() {
+    return [
+      {
+        source: "/s/:slug*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-store, no-cache, must-revalidate, max-age=0",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

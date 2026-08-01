@@ -107,6 +107,32 @@ export async function publishTripToCommunity(input: {
   return created;
 }
 
+/** Keep published community cards in sync when a pack changes. */
+export async function syncCommunityPostForTrip(
+  tripId: number,
+  stats: {
+    baseWeightGrams: number;
+    packWeightGrams: number;
+    committedCount: number;
+  },
+) {
+  const existing = await db
+    .select({ id: communityPosts.id })
+    .from(communityPosts)
+    .where(eq(communityPosts.tripId, tripId))
+    .limit(1);
+  if (!existing[0]) return;
+
+  await db
+    .update(communityPosts)
+    .set({
+      baseWeightGrams: stats.baseWeightGrams,
+      packWeightGrams: stats.packWeightGrams,
+      itemCount: stats.committedCount,
+    })
+    .where(eq(communityPosts.id, existing[0].id));
+}
+
 export async function addComment(input: {
   postId: number;
   userId: number;

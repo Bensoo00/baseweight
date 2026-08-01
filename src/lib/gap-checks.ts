@@ -251,48 +251,13 @@ export function runGapChecks(options: {
     }
   }
 
-  // Upgrade suggestions: heaviest base items vs lighter catalog in same category
-  const upgrades: UpgradeSuggestion[] = [];
-  const baseItems = gear
-    .filter((g) => !g.worn && !g.consumable)
-    .sort((a, b) => b.weightGrams * b.quantity - a.weightGrams * a.quantity)
-    .slice(0, 8);
-
-  for (const item of baseItems) {
-    const lighter = catalog
-      .filter(
-        (c) =>
-          c.category === item.category &&
-          c.weightGrams < item.weightGrams - 40 &&
-          c.priceUsd <= Math.max(item.priceUsd * 1.35, item.priceUsd + 80),
-      )
-      .sort((a, b) => a.weightGrams - b.weightGrams)[0];
-
-    if (!lighter) continue;
-    const gramsSaved = item.weightGrams - lighter.weightGrams;
-    upgrades.push({
-      currentName: item.brand ? `${item.brand} ${item.name}` : item.name,
-      currentWeightGrams: item.weightGrams,
-      currentPriceUsd: item.priceUsd,
-      suggestionName: lighter.name,
-      suggestionBrand: lighter.brand,
-      suggestionWeightGrams: lighter.weightGrams,
-      suggestionPriceUsd: lighter.priceUsd,
-      gramsSaved,
-      category: item.category as Category,
-      reason: `Save ~${Math.round(gramsSaved / 28.3495)} oz${
-        lighter.priceUsd > item.priceUsd
-          ? ` for about $${Math.round(lighter.priceUsd - item.priceUsd)} more`
-          : " while staying near your current spend"
-      }.`,
-    });
-  }
-
+  // No automatic "replace X with Y" suggestions — category+weight matching
+  // produced nonsense (e.g. bear can → stove). Keep trail gap checks only.
   return {
     checks: checks.sort((a, b) => {
       const rank = { fail: 0, warn: 1, pass: 2 };
       return rank[a.severity] - rank[b.severity];
     }),
-    upgrades: upgrades.slice(0, 4),
+    upgrades: [],
   };
 }

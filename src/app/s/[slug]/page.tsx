@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { CategoryBars } from "@/components/CategoryBars";
@@ -10,10 +11,14 @@ import { getTripBySlug } from "@/lib/trips";
 import { CATEGORIES, CATEGORY_LABELS, formatUsd } from "@/lib/units";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 type Props = { params: Promise<{ slug: string }> };
 
 export default async function SharePage({ params }: Props) {
+  // Opt out of any static/RSC caching so pack edits show up immediately.
+  await connection();
   await seedIfEmpty();
   const { slug } = await params;
   const detail = await getTripBySlug(slug);

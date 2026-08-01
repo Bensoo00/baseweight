@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db, ensureSchema } from "@/db";
 import { lockerItems, tripItems, trips } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { syncCommunityPostForTrip } from "@/lib/community";
 import {
   addCustomItemToTrip,
   addLockerItemsToTrip,
@@ -64,6 +65,7 @@ export async function POST(request: Request, { params }: Params) {
   if (custom.success) {
     await addCustomItemToTrip(user.id, tripId, custom.data.item);
     const light = await getTripItemsWithStats(tripId);
+    await syncCommunityPostForTrip(tripId, light.stats);
     return NextResponse.json(
       { ...light, lockerSynced: Boolean(custom.data.item.alsoAddToLocker) },
       { status: 201 },
@@ -89,7 +91,9 @@ export async function POST(request: Request, { params }: Params) {
     );
 
   await addLockerItemsToTrip(tripId, items);
-  return NextResponse.json(await getTripItemsWithStats(tripId));
+  const light = await getTripItemsWithStats(tripId);
+  await syncCommunityPostForTrip(tripId, light.stats);
+  return NextResponse.json(light);
 }
 
 export async function PATCH(request: Request, { params }: Params) {
@@ -190,6 +194,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   await Promise.all(writeJobs);
   const light = await getTripItemsWithStats(tripId);
+  await syncCommunityPostForTrip(tripId, light.stats);
   return NextResponse.json({ ...light, lockerSynced });
 }
 
@@ -216,5 +221,7 @@ export async function DELETE(request: Request, { params }: Params) {
       .set({ updatedAt: new Date().toISOString() })
       .where(and(eq(trips.id, tripId), eq(trips.userId, user.id))),
   ]);
-  return NextResponse.json(await getTripItemsWithStats(tripId));
+  const light = await getTripItemsWithStats(tripId);
+  await syncCommunityPostForTrip(tripId, light.stats);
+  return NextResponse.json(light);
 }
