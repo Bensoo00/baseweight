@@ -576,116 +576,80 @@ export function TripDetailClient({
         </label>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[0.95fr_1.25fr]">
-        <aside className="space-y-5">
-          <div className="panel-ink p-6">
-            <div className="stat-number text-[var(--paper)]">
-              <Weight grams={detail.stats.baseWeightGrams} />
-            </div>
-            <div className="mt-2 font-semibold">Base weight</div>
-            <p className="mt-2 text-sm text-white/65">
-              Target {format(detail.trip.targetBaseWeightGrams)}
-            </p>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15">
-              <div
-                className="h-full rounded-full bg-[var(--lichen)]"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-2xl bg-white/10 p-3">
-                <div className="text-white/60">Pack (total − worn)</div>
-                <div className="mt-1 text-lg font-semibold">
-                  <Weight grams={detail.stats.packWeightGrams} />
-                </div>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-3">
-                <div className="text-white/60">Maybe</div>
-                <div className="mt-1 text-lg font-semibold">
-                  <Weight grams={detail.stats.maybeWeightGrams} />
-                </div>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-3">
-                <div className="text-white/60">Worn</div>
-                <div className="mt-1 text-lg font-semibold">
-                  <Weight grams={detail.stats.wornWeightGrams} />
-                </div>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-3">
-                <div className="text-white/60">Consumable</div>
-                <div className="mt-1 text-lg font-semibold">
-                  <Weight grams={detail.stats.consumableWeightGrams} />
-                </div>
-              </div>
-            </div>
+      <div className="panel-ink flex flex-col gap-5 p-5 md:flex-row md:items-end md:justify-between md:p-6">
+        <div className="min-w-0">
+          <div className="stat-number text-[var(--paper)]">
+            <Weight grams={detail.stats.baseWeightGrams} />
           </div>
-
-          <div className="panel p-5">
-            <div className="mb-4 text-sm font-semibold">
-              Weight by category (bars)
-            </div>
-            <CategoryBars
-              rows={detail.stats.categoryBreakdown}
-              totalGrams={detail.stats.packWeightGrams}
+          <div className="mt-1 font-semibold">Base weight</div>
+          <p className="mt-1 text-sm text-white/65">
+            Target {format(detail.trip.targetBaseWeightGrams)}
+          </p>
+          <div className="mt-3 h-2 max-w-md overflow-hidden rounded-full bg-white/15">
+            <div
+              className="h-full rounded-full bg-[var(--lichen)]"
+              style={{ width: `${progress}%` }}
             />
           </div>
-
-          <div className="panel p-5">
-            <div className="text-sm font-semibold">Decision math</div>
-            <p className="mt-1 text-sm text-ink-soft">
-              Where money sits relative to ounces in base weight.
-            </p>
-            <div className="mt-4 space-y-2">
-              {detail.stats.costPerOzSavedHints.map((hint) => (
-                <div
-                  key={hint.name}
-                  className="flex items-center justify-between gap-3 text-sm"
-                >
-                  <span className="truncate">{hint.name}</span>
-                  <span className="shrink-0 text-ink-soft">
-                    {formatUsd(hint.dollarsPerOz)}/oz ·{" "}
-                    <Weight grams={hint.weightGrams} />
-                  </span>
-                </div>
-              ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:gap-3">
+          <div className="rounded-2xl bg-white/10 px-3 py-2.5">
+            <div className="text-xs text-white/60">Pack</div>
+            <div className="mt-0.5 text-base font-semibold tabular-nums">
+              <Weight grams={detail.stats.packWeightGrams} />
             </div>
           </div>
-
-          <GapPanel checks={detail.checks} upgrades={detail.upgrades} />
-        </aside>
-
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              Pack list
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="pill pill-cta"
-                onClick={() => {
-                  setAddOpen((v) => !v);
-                  setPickerOpen(false);
-                }}
-              >
-                <span className="arrow">
-                  <Plus size={14} />
-                </span>
-                Add item
-              </button>
-              <button
-                type="button"
-                className="pill pill-soft"
-                onClick={() => {
-                  setPickerOpen((v) => !v);
-                  setAddOpen(false);
-                }}
-              >
-                <Copy size={16} />
-                From inventory
-              </button>
+          <div className="rounded-2xl bg-white/10 px-3 py-2.5">
+            <div className="text-xs text-white/60">Worn</div>
+            <div className="mt-0.5 text-base font-semibold tabular-nums">
+              <Weight grams={detail.stats.wornWeightGrams} />
             </div>
           </div>
+          <div className="rounded-2xl bg-white/10 px-3 py-2.5">
+            <div className="text-xs text-white/60">Consumable</div>
+            <div className="mt-0.5 text-base font-semibold tabular-nums">
+              <Weight grams={detail.stats.consumableWeightGrams} />
+            </div>
+          </div>
+          <div className="rounded-2xl bg-white/10 px-3 py-2.5">
+            <div className="text-xs text-white/60">Maybe</div>
+            <div className="mt-0.5 text-base font-semibold tabular-nums">
+              <Weight grams={detail.stats.maybeWeightGrams} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-2xl font-semibold tracking-tight">Pack list</h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="pill pill-cta"
+              onClick={() => {
+                setAddOpen((v) => !v);
+                setPickerOpen(false);
+              }}
+            >
+              <span className="arrow">
+                <Plus size={14} />
+              </span>
+              Add item
+            </button>
+            <button
+              type="button"
+              className="pill pill-soft"
+              onClick={() => {
+                setPickerOpen((v) => !v);
+                setAddOpen(false);
+              }}
+            >
+              <Copy size={16} />
+              From inventory
+            </button>
+          </div>
+        </div>
 
           {addOpen && (
             <div className="panel grid gap-3 p-4 md:grid-cols-2">
@@ -880,35 +844,77 @@ export function TripDetailClient({
             </div>
           )}
 
-          {detail.items.length === 0 ? (
-            <div className="glass-card-soft p-8 text-ink-soft">
-              Nothing packed yet. Add an item, import a CSV, or pull from
-              inventory.
-            </div>
-          ) : (
-            <div className="category-board">
-              {groupedItems.map(([category, list]) => {
-                const isCollapsed = collapsedCats[category];
-                const grams = list.reduce(
-                  (sum, i) => sum + i.weightGrams * i.quantity,
-                  0,
-                );
-                const headerColor =
-                  categoryColors[category] ?? DEFAULT_CATEGORY_COLORS[category];
-                const headerInk = contrastOnColor(headerColor);
-                const pickerOpen = colorPickerCat === category;
-                return (
+        {detail.items.length === 0 ? (
+          <div className="glass-card-soft p-8 text-ink-soft">
+            Nothing packed yet. Add an item, import a CSV, or pull from
+            inventory.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {groupedItems.map(([category, list]) => {
+              const isCollapsed = collapsedCats[category];
+              const grams = list.reduce(
+                (sum, i) => sum + i.weightGrams * i.quantity,
+                0,
+              );
+              const headerColor =
+                categoryColors[category] ?? DEFAULT_CATEGORY_COLORS[category];
+              const headerInk = contrastOnColor(headerColor);
+              const colorOpen = colorPickerCat === category;
+              return (
+                <div key={category} className="category-section overflow-hidden">
                   <div
-                    key={category}
-                    className="category-tile flex flex-col overflow-hidden"
+                    className="relative flex items-center justify-between gap-3 px-4 py-3.5 md:px-5"
+                    style={{ background: headerColor, color: headerInk }}
                   >
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() =>
+                        setCollapsedCats((prev) => ({
+                          ...prev,
+                          [category]: !prev[category],
+                        }))
+                      }
+                    >
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                        <span className="text-lg font-semibold tracking-tight md:text-xl">
+                          {CATEGORY_LABELS[category]}
+                        </span>
+                        <span
+                          className="text-sm tabular-nums"
+                          style={{ opacity: 0.88 }}
+                        >
+                          {list.length} item{list.length === 1 ? "" : "s"} ·{" "}
+                          <Weight grams={grams} />
+                        </span>
+                      </div>
+                    </button>
                     <div
-                      className="relative flex items-start justify-between gap-2 px-4 py-3.5"
-                      style={{ background: headerColor, color: headerInk }}
+                      className="relative flex shrink-0 items-center gap-1"
+                      data-category-color-picker
                     >
                       <button
                         type="button"
-                        className="min-w-0 flex-1 text-left"
+                        className="grid h-9 w-9 place-items-center rounded-lg transition hover:bg-black/15"
+                        style={{ color: headerInk }}
+                        aria-label={`Change ${CATEGORY_LABELS[category]} color`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setColorPickerCat((prev) =>
+                            prev === category ? null : category,
+                          );
+                        }}
+                      >
+                        <Palette size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="grid h-9 w-9 place-items-center rounded-lg transition hover:bg-black/15"
+                        style={{ color: headerInk }}
+                        aria-label={
+                          isCollapsed ? "Expand category" : "Collapse category"
+                        }
                         onClick={() =>
                           setCollapsedCats((prev) => ({
                             ...prev,
@@ -916,367 +922,346 @@ export function TripDetailClient({
                           }))
                         }
                       >
-                        <div className="text-base font-semibold leading-tight tracking-tight md:text-lg">
-                          {CATEGORY_LABELS[category]}
-                        </div>
-                        <div
-                          className="mt-1 text-sm tabular-nums"
-                          style={{ opacity: 0.88 }}
-                        >
-                          {list.length} item{list.length === 1 ? "" : "s"} ·{" "}
-                          <Weight grams={grams} />
-                        </div>
+                        <ChevronDown
+                          size={18}
+                          className={`transition ${
+                            isCollapsed ? "-rotate-90" : ""
+                          }`}
+                        />
                       </button>
-                      <div
-                        className="relative flex shrink-0 items-center gap-1"
-                        data-category-color-picker
-                      >
-                        <button
-                          type="button"
-                          className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/15"
-                          style={{ color: headerInk }}
-                          aria-label={`Change ${CATEGORY_LABELS[category]} color`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setColorPickerCat((prev) =>
-                              prev === category ? null : category,
-                            );
-                          }}
+                      {colorOpen && (
+                        <div
+                          className="absolute right-0 top-full z-20 mt-2 w-[188px] rounded-xl border border-black/10 bg-white p-2.5 shadow-lg"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <Palette size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/15"
-                          style={{ color: headerInk }}
-                          aria-label={
-                            isCollapsed ? "Expand category" : "Collapse category"
-                          }
-                          onClick={() =>
-                            setCollapsedCats((prev) => ({
-                              ...prev,
-                              [category]: !prev[category],
-                            }))
-                          }
-                        >
-                          <ChevronDown
-                            size={16}
-                            className={`transition ${
-                              isCollapsed ? "-rotate-90" : ""
-                            }`}
-                          />
-                        </button>
-                        {pickerOpen && (
-                          <div
-                            className="absolute right-0 top-full z-20 mt-2 w-[188px] rounded-xl border border-black/10 bg-white p-2.5 shadow-lg"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                              Header color
-                            </div>
-                            <div className="grid grid-cols-4 gap-1.5">
-                              {CATEGORY_COLOR_SWATCHES.map((swatch) => (
-                                <button
-                                  key={swatch}
-                                  type="button"
-                                  className="h-8 w-full rounded-md border border-black/10 transition hover:scale-105"
-                                  style={{ background: swatch }}
-                                  aria-label={`Set color ${swatch}`}
-                                  onClick={() => {
-                                    setCategoryColor(category, swatch);
-                                    setColorPickerCat(null);
-                                  }}
-                                />
-                              ))}
-                            </div>
-                            <label className="mt-2 flex items-center gap-2 text-xs text-ink-soft">
-                              <span>Custom</span>
-                              <input
-                                type="color"
-                                value={headerColor}
-                                className="h-8 w-full cursor-pointer rounded border border-black/10 bg-transparent"
-                                onChange={(e) =>
-                                  setCategoryColor(category, e.target.value)
-                                }
+                          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                            Header color
+                          </div>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {CATEGORY_COLOR_SWATCHES.map((swatch) => (
+                              <button
+                                key={swatch}
+                                type="button"
+                                className="h-8 w-full rounded-md border border-black/10 transition hover:scale-105"
+                                style={{ background: swatch }}
+                                aria-label={`Set color ${swatch}`}
+                                onClick={() => {
+                                  setCategoryColor(category, swatch);
+                                  setColorPickerCat(null);
+                                }}
                               />
-                            </label>
+                            ))}
+                          </div>
+                          <label className="mt-2 flex items-center gap-2 text-xs text-ink-soft">
+                            <span>Custom</span>
+                            <input
+                              type="color"
+                              value={headerColor}
+                              className="h-8 w-full cursor-pointer rounded border border-black/10 bg-transparent"
+                              onChange={(e) =>
+                                setCategoryColor(category, e.target.value)
+                              }
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="mt-2 w-full text-left text-xs text-ink-soft hover:text-ink"
+                            onClick={() => {
+                              setCategoryColor(
+                                category,
+                                DEFAULT_CATEGORY_COLORS[category],
+                              );
+                              setColorPickerCat(null);
+                            }}
+                          >
+                            Reset default
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {!isCollapsed && (
+                    <div className="divide-y divide-black/8 bg-[rgba(255,255,255,0.9)]">
+                      {list.map((item) => {
+                        const open = openId === item.id;
+                        return (
+                          <div key={item.id} className="px-4 py-3.5 md:px-5">
                             <button
                               type="button"
-                              className="mt-2 w-full text-left text-xs text-ink-soft hover:text-ink"
-                              onClick={() => {
-                                setCategoryColor(
-                                  category,
-                                  DEFAULT_CATEGORY_COLORS[category],
-                                );
-                                setColorPickerCat(null);
-                              }}
+                              className="flex w-full items-center gap-3 text-left md:gap-4"
+                              onClick={() =>
+                                setOpenId(open ? null : item.id)
+                              }
                             >
-                              Reset default
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {!isCollapsed && (
-                      <div className="flex flex-1 flex-col divide-y divide-black/8 bg-[rgba(255,255,255,0.88)]">
-                        {list.map((item) => {
-                          const open = openId === item.id;
-                          return (
-                            <div key={item.id} className="px-4 py-3">
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-3 text-left"
-                                onClick={() =>
-                                  setOpenId(open ? null : item.id)
-                                }
-                              >
-                                <div
-                                  className="mt-0.5 h-10 w-1.5 shrink-0 rounded-full"
-                                  style={{ background: headerColor }}
-                                  aria-hidden
+                              <div
+                                className="h-11 w-1.5 shrink-0 rounded-full"
+                                style={{ background: headerColor }}
+                                aria-hidden
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[15px] font-medium leading-snug md:text-base">
+                                  {item.name}
+                                  {item.quantity > 1 && (
+                                    <span className="ml-1.5 rounded-full bg-black/8 px-1.5 py-0.5 text-[11px] font-medium">
+                                      ×{item.quantity}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-0.5 text-sm text-ink-soft">
+                                  {item.brand || "Unbranded"}
+                                  {item.worn ? " · Worn" : ""}
+                                  {item.consumable ? " · Cons." : ""}
+                                  {item.maybe ? " · Maybe" : ""}
+                                </div>
+                              </div>
+                              <div className="shrink-0 text-right text-[15px] font-semibold tabular-nums md:text-base">
+                                <Weight
+                                  grams={item.weightGrams * item.quantity}
                                 />
-                                <div className="min-w-0 flex-1">
-                                  <div className="truncate text-[15px] font-medium leading-snug">
-                                    {item.name}
-                                    {item.quantity > 1 && (
-                                      <span className="ml-1.5 rounded-full bg-black/8 px-1.5 py-0.5 text-[11px] font-medium">
-                                        ×{item.quantity}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="mt-0.5 truncate text-sm text-ink-soft">
-                                    {item.brand || "Unbranded"}
-                                    {item.worn ? " · Worn" : ""}
-                                    {item.consumable ? " · Cons." : ""}
-                                    {item.maybe ? " · Maybe" : ""}
-                                  </div>
-                                </div>
-                                <div className="shrink-0 text-right text-[15px] font-semibold tabular-nums">
-                                  <Weight
-                                    grams={item.weightGrams * item.quantity}
-                                  />
-                                </div>
-                                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-black/10 bg-white">
-                                  <ArrowUpRight
-                                    size={14}
-                                    className={`transition ${open ? "rotate-45" : ""}`}
-                                  />
-                                </span>
-                              </button>
-                              {open && (
-                                <div className="mt-2 space-y-2 rounded-xl bg-[#e8eee6]/90 p-3">
+                              </div>
+                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-black/10 bg-white">
+                                <ArrowUpRight
+                                  size={14}
+                                  className={`transition ${open ? "rotate-45" : ""}`}
+                                />
+                              </span>
+                            </button>
+                            {open && (
+                              <div className="mt-3 space-y-3 rounded-xl bg-[#e8eee6]/95 p-4 md:max-w-2xl">
+                                <label className="block space-y-1">
+                                  <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                                    Category
+                                  </span>
+                                  <select
+                                    className="field field-sm field-category"
+                                    value={item.category}
+                                    onChange={(e) =>
+                                      patchItem(item.id, {
+                                        category: e.target.value,
+                                      })
+                                    }
+                                  >
+                                    {CATEGORIES.map((cat) => (
+                                      <option key={cat} value={cat}>
+                                        {CATEGORY_LABELS[cat]}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <label className="block space-y-1 sm:col-span-2">
+                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                                      Name
+                                    </span>
+                                    <input
+                                      className="field field-sm"
+                                      defaultValue={item.name}
+                                      key={`name-${item.id}-${item.name}`}
+                                      onBlur={(e) => {
+                                        const value = e.target.value.trim();
+                                        if (value && value !== item.name) {
+                                          patchItem(item.id, { name: value });
+                                        }
+                                      }}
+                                    />
+                                  </label>
                                   <label className="block space-y-1">
                                     <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                                      Category
+                                      Brand
                                     </span>
-                                    <select
-                                      className="field field-sm field-category"
-                                      value={item.category}
-                                      onChange={(e) =>
-                                        patchItem(item.id, {
-                                          category: e.target.value,
-                                        })
-                                      }
-                                    >
-                                      {CATEGORIES.map((cat) => (
-                                        <option key={cat} value={cat}>
-                                          {CATEGORY_LABELS[cat]}
-                                        </option>
-                                      ))}
-                                    </select>
+                                    <input
+                                      className="field field-sm"
+                                      defaultValue={item.brand}
+                                      key={`brand-${item.id}-${item.brand}`}
+                                      onBlur={(e) => {
+                                        if (e.target.value !== item.brand) {
+                                          patchItem(item.id, {
+                                            brand: e.target.value,
+                                          });
+                                        }
+                                      }}
+                                    />
                                   </label>
-                                  <div className="grid gap-2 sm:grid-cols-2">
-                                    <label className="block space-y-1 sm:col-span-2">
-                                      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                                        Name
-                                      </span>
-                                      <input
-                                        className="field field-sm"
-                                        defaultValue={item.name}
-                                        key={`name-${item.id}-${item.name}`}
-                                        onBlur={(e) => {
-                                          const value = e.target.value.trim();
-                                          if (value && value !== item.name) {
-                                            patchItem(item.id, { name: value });
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                    <label className="block space-y-1">
-                                      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                                        Brand
-                                      </span>
-                                      <input
-                                        className="field field-sm"
-                                        defaultValue={item.brand}
-                                        key={`brand-${item.id}-${item.brand}`}
-                                        onBlur={(e) => {
-                                          if (e.target.value !== item.brand) {
-                                            patchItem(item.id, {
-                                              brand: e.target.value,
-                                            });
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                    <label className="block space-y-1">
-                                      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                                        Weight (g)
-                                      </span>
-                                      <input
-                                        className="field field-sm"
-                                        type="number"
-                                        min={1}
-                                        defaultValue={item.weightGrams}
-                                        key={`wt-${item.id}-${item.weightGrams}`}
-                                        onBlur={(e) => {
-                                          const value = Number(e.target.value);
-                                          if (
-                                            value > 0 &&
-                                            value !== item.weightGrams
-                                          ) {
-                                            patchItem(item.id, {
-                                              weightGrams: value,
-                                            });
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                    <label className="block space-y-1">
-                                      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                                        Price (USD)
-                                      </span>
-                                      <input
-                                        className="field field-sm"
-                                        type="number"
-                                        min={0}
-                                        defaultValue={item.priceUsd}
-                                        key={`price-${item.id}-${item.priceUsd}`}
-                                        onBlur={(e) => {
-                                          const value = Number(e.target.value);
-                                          if (
-                                            Number.isFinite(value) &&
-                                            value !== item.priceUsd
-                                          ) {
-                                            patchItem(item.id, {
-                                              priceUsd: value,
-                                            });
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                    <label className="block space-y-1">
-                                      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                                        Qty
-                                      </span>
-                                      <input
-                                        className="field field-sm"
-                                        type="number"
-                                        min={0}
-                                        max={99}
-                                        defaultValue={item.quantity}
-                                        key={`qty-${item.id}-${item.quantity}`}
-                                        onBlur={(e) => {
-                                          const value = Number(e.target.value);
-                                          if (
-                                            Number.isFinite(value) &&
-                                            value !== item.quantity
-                                          ) {
-                                            patchItem(item.id, {
-                                              quantity: value,
-                                            });
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                  </div>
-                                  {item.lockerItemId ? (
-                                    <p className="text-[11px] text-ink-soft">
-                                      Linked to inventory — edits update the
-                                      locker too.
-                                    </p>
-                                  ) : (
-                                    <p className="text-[11px] text-ink-soft">
-                                      Pack-only item (not in inventory).
-                                    </p>
-                                  )}
-                                  <div className="flex flex-wrap gap-1.5">
-                                    <button
-                                      type="button"
-                                      className="chip !px-2.5 !py-1 !text-xs"
-                                      data-active={item.worn}
-                                      onClick={() =>
-                                        patchItem(item.id, {
-                                          worn: !item.worn,
-                                          maybe: false,
-                                        })
-                                      }
-                                    >
-                                      Worn
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="chip !px-2.5 !py-1 !text-xs"
-                                      data-active={item.consumable}
-                                      onClick={() =>
-                                        patchItem(item.id, {
-                                          consumable: !item.consumable,
-                                        })
-                                      }
-                                    >
-                                      Consumable
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="chip !px-2.5 !py-1 !text-xs"
-                                      data-active={item.maybe}
-                                      onClick={() =>
-                                        patchItem(item.id, {
-                                          maybe: !item.maybe,
-                                          worn: false,
-                                        })
-                                      }
-                                    >
-                                      Maybe
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="chip !px-2.5 !py-1 !text-xs text-[var(--signal-fail)]"
-                                      onClick={() => removeItem(item.id)}
-                                    >
-                                      <Trash2 size={12} className="mr-1" />
-                                      Remove
-                                    </button>
-                                  </div>
+                                  <label className="block space-y-1">
+                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                                      Weight (g)
+                                    </span>
+                                    <input
+                                      className="field field-sm"
+                                      type="number"
+                                      min={1}
+                                      defaultValue={item.weightGrams}
+                                      key={`wt-${item.id}-${item.weightGrams}`}
+                                      onBlur={(e) => {
+                                        const value = Number(e.target.value);
+                                        if (
+                                          value > 0 &&
+                                          value !== item.weightGrams
+                                        ) {
+                                          patchItem(item.id, {
+                                            weightGrams: value,
+                                          });
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                  <label className="block space-y-1">
+                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                                      Price (USD)
+                                    </span>
+                                    <input
+                                      className="field field-sm"
+                                      type="number"
+                                      min={0}
+                                      defaultValue={item.priceUsd}
+                                      key={`price-${item.id}-${item.priceUsd}`}
+                                      onBlur={(e) => {
+                                        const value = Number(e.target.value);
+                                        if (
+                                          Number.isFinite(value) &&
+                                          value !== item.priceUsd
+                                        ) {
+                                          patchItem(item.id, {
+                                            priceUsd: value,
+                                          });
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                  <label className="block space-y-1">
+                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                                      Qty
+                                    </span>
+                                    <input
+                                      className="field field-sm"
+                                      type="number"
+                                      min={0}
+                                      max={99}
+                                      defaultValue={item.quantity}
+                                      key={`qty-${item.id}-${item.quantity}`}
+                                      onBlur={(e) => {
+                                        const value = Number(e.target.value);
+                                        if (
+                                          Number.isFinite(value) &&
+                                          value !== item.quantity
+                                        ) {
+                                          patchItem(item.id, {
+                                            quantity: value,
+                                          });
+                                        }
+                                      }}
+                                    />
+                                  </label>
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {isCollapsed && (
-                      <button
-                        type="button"
-                        className="bg-[rgba(255,255,255,0.75)] px-4 py-5 text-left text-sm text-ink-soft hover:text-ink"
-                        onClick={() =>
-                          setCollapsedCats((prev) => ({
-                            ...prev,
-                            [category]: false,
-                          }))
-                        }
-                      >
-                        Show {list.length} item
-                        {list.length === 1 ? "" : "s"}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                                {item.lockerItemId ? (
+                                  <p className="text-[11px] text-ink-soft">
+                                    Linked to inventory — edits update the
+                                    locker too.
+                                  </p>
+                                ) : (
+                                  <p className="text-[11px] text-ink-soft">
+                                    Pack-only item (not in inventory).
+                                  </p>
+                                )}
+                                <div className="flex flex-wrap gap-1.5">
+                                  <button
+                                    type="button"
+                                    className="chip !px-2.5 !py-1 !text-xs"
+                                    data-active={item.worn}
+                                    onClick={() =>
+                                      patchItem(item.id, {
+                                        worn: !item.worn,
+                                        maybe: false,
+                                      })
+                                    }
+                                  >
+                                    Worn
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="chip !px-2.5 !py-1 !text-xs"
+                                    data-active={item.consumable}
+                                    onClick={() =>
+                                      patchItem(item.id, {
+                                        consumable: !item.consumable,
+                                      })
+                                    }
+                                  >
+                                    Consumable
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="chip !px-2.5 !py-1 !text-xs"
+                                    data-active={item.maybe}
+                                    onClick={() =>
+                                      patchItem(item.id, {
+                                        maybe: !item.maybe,
+                                        worn: false,
+                                      })
+                                    }
+                                  >
+                                    Maybe
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="chip !px-2.5 !py-1 !text-xs text-[var(--signal-fail)]"
+                                    onClick={() => removeItem(item.id)}
+                                  >
+                                    <Trash2 size={12} className="mr-1" />
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="panel p-5">
+          <div className="mb-4 text-sm font-semibold">
+            Weight by category
+          </div>
+          <CategoryBars
+            rows={detail.stats.categoryBreakdown}
+            totalGrams={detail.stats.packWeightGrams}
+          />
+        </div>
+        <div className="panel p-5">
+          <div className="text-sm font-semibold">Decision math</div>
+          <p className="mt-1 text-sm text-ink-soft">
+            Where money sits relative to ounces in base weight.
+          </p>
+          <div className="mt-4 space-y-2">
+            {detail.stats.costPerOzSavedHints.map((hint) => (
+              <div
+                key={hint.name}
+                className="flex items-center justify-between gap-3 text-sm"
+              >
+                <span className="truncate">{hint.name}</span>
+                <span className="shrink-0 text-ink-soft">
+                  {formatUsd(hint.dollarsPerOz)}/oz ·{" "}
+                  <Weight grams={hint.weightGrams} />
+                </span>
+              </div>
+            ))}
+            {detail.stats.costPerOzSavedHints.length === 0 && (
+              <p className="text-sm text-ink-soft">No priced base items yet.</p>
+            )}
+          </div>
+        </div>
+        <div className="lg:col-span-2">
+          <GapPanel checks={detail.checks} upgrades={detail.upgrades} />
+        </div>
       </div>
     </div>
   );
