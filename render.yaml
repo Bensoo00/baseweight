@@ -1,0 +1,26 @@
+# Optional Blueprint: provision Postgres on Render.
+# Link this repo in Render → New → Blueprint, or create Postgres manually
+# and paste the External Database URL into Vercel as DATABASE_URL.
+
+databases:
+  - name: baseweight-db
+    plan: free
+    postgresMajorVersion: "16"
+
+# App hosting is on Vercel. If you later want the Next app on Render too,
+# uncomment and set DATABASE_URL from the database above.
+#
+# services:
+#   - type: web
+#     name: baseweight-web
+#     runtime: node
+#     plan: free
+#     buildCommand: npm ci && npm run db:push && npm run db:seed && npm run build
+#     startCommand: npm run start
+#     envVars:
+#       - key: DATABASE_URL
+#         fromDatabase:
+#           name: baseweight-db
+#           property: connectionString
+#       - key: NODE_VERSION
+#         value: "22"

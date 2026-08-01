@@ -1,23 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --bg-deep: #0f1714;
-  --bg-forest: #1a2a22;
-  --ink: #13201a;
-  --ink-soft: #3d5248;
-  --mist: #eef3ef;
-  --paper: rgba(255, 255, 255, 0.92);
-  --glass: rgba(255, 255, 255, 0.12);
-  --glass-strong: rgba(255, 255, 255, 0.22);
-  --line: rgba(255, 255, 255, 0.28);
-  --accent: #c8f06c;
-  --accent-ink: #1a2a0f;
-  --amber: #d4a35c;
-  --ridge: #5f7f6e;
-  --danger: #c45c4a;
-  --shadow: 0 30px 80px rgba(8, 16, 12, 0.35);
-  --radius-shell: 2rem;
-  --radius-panel: 1.5rem;
+  --ink: #121a16;
+  --ink-soft: #4a5c52;
+  --paper: #f3efe6;
+  --paper-2: #ebe4d6;
+  --panel: #fffdf8;
+  --line: rgba(18, 26, 22, 0.1);
+  --moss: #2f4a3c;
+  --moss-deep: #1c2d25;
+  --lichen: #c6f06a;
+  --lichen-ink: #1a280c;
+  --copper: #c47a3a;
+  --signal-fail: #c45c4a;
+  --signal-warn: #c47a3a;
+  --signal-pass: #3f7d57;
+  --shadow: 0 18px 50px rgba(12, 20, 16, 0.18);
+  --radius: 1.25rem;
 }
 
 @theme inline {
@@ -25,10 +24,10 @@
   --font-serif: var(--font-fraunces);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
-  --color-mist: var(--mist);
-  --color-accent: var(--accent);
-  --color-amber: var(--amber);
-  --color-ridge: var(--ridge);
+  --color-paper: var(--paper);
+  --color-moss: var(--moss);
+  --color-lichen: var(--lichen);
+  --color-copper: var(--copper);
 }
 
 * {
@@ -44,7 +43,7 @@ body {
   margin: 0;
   color: var(--ink);
   font-family: var(--font-outfit), sans-serif;
-  background: var(--bg-deep);
+  background: var(--moss-deep);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -61,8 +60,8 @@ textarea {
 }
 
 ::selection {
-  background: color-mix(in oklab, var(--accent) 55%, white);
-  color: var(--accent-ink);
+  background: color-mix(in oklab, var(--lichen) 60%, white);
+  color: var(--lichen-ink);
 }
 
 .app-backdrop {
@@ -70,75 +69,128 @@ textarea {
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 55% at 20% 15%, rgba(212, 163, 92, 0.28), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 80% 20%, rgba(95, 127, 110, 0.35), transparent 50%),
-    linear-gradient(165deg, #24362d 0%, #142019 45%, #0d1411 100%);
-  overflow: hidden;
+    radial-gradient(ellipse 70% 50% at 10% 0%, rgba(198, 240, 106, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(196, 122, 58, 0.14), transparent 50%),
+    linear-gradient(165deg, #24362d 0%, #152019 48%, #101815 100%);
 }
 
 .app-backdrop::before {
   content: "";
   position: absolute;
-  inset: -10%;
-  background-image: url("https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2400&q=80");
-  background-size: cover;
-  background-position: center 35%;
-  filter: blur(28px) saturate(1.05) brightness(0.55);
-  transform: scale(1.08);
-}
-
-.app-backdrop::after {
-  content: "";
-  position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(10, 18, 14, 0.25), rgba(10, 18, 14, 0.55)),
-    radial-gradient(circle at 50% 0%, transparent 30%, rgba(8, 14, 11, 0.45) 100%);
+  opacity: 0.22;
+  background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 40c20 0 20 20 40 20s20-20 40-20 20 20 40 20 20-20 40-20M0 80c20 0 20 20 40 20s20-20 40-20 20 20 40 20 20-20 40-20M0 120c20 0 20 20 40 20s20-20 40-20 20 20 40 20 20-20 40-20' fill='none' stroke='%23c6f06a' stroke-width='0.8'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  mask-image: linear-gradient(180deg, black, transparent 85%);
 }
 
 .app-frame {
   position: relative;
   z-index: 1;
   min-height: 100vh;
-  padding: clamp(0.75rem, 2vw, 1.25rem);
+  padding: clamp(0.65rem, 1.8vw, 1.1rem);
   display: flex;
-  align-items: stretch;
   justify-content: center;
 }
 
 .app-shell {
-  width: min(1180px, 100%);
-  min-height: calc(100vh - 2 * clamp(0.75rem, 2vw, 1.25rem));
-  border-radius: var(--radius-shell);
-  border: 10px solid rgba(255, 255, 255, 0.88);
-  background: rgba(248, 250, 248, 0.86);
+  position: relative;
+  width: min(1200px, 100%);
+  min-height: calc(100vh - 2 * clamp(0.65rem, 1.8vw, 1.1rem));
+  border-radius: calc(var(--radius) + 0.35rem);
+  background: var(--paper);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(18px);
   overflow: clip;
   display: flex;
   flex-direction: column;
 }
 
-.app-shell[data-tone="immersive"] {
-  background: rgba(18, 28, 23, 0.42);
-  border-color: rgba(255, 255, 255, 0.72);
-  color: white;
+.app-shell[data-tone="dark"] {
+  background: linear-gradient(180deg, #1a2921 0%, #121c17 100%);
+  color: #f3efe6;
 }
 
-.glass-panel {
-  background: var(--glass);
+.taskbar {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.2rem;
+  padding: 0.45rem;
+  border-radius: 1.25rem;
+  background: rgba(18, 26, 22, 0.94);
+  color: #f3efe6;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 36px rgba(8, 14, 11, 0.35);
+  backdrop-filter: blur(12px);
+}
+
+.taskbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 3.35rem;
+  border-radius: 0.95rem;
+  color: rgba(243, 239, 230, 0.62);
+  font-size: 0.68rem;
+  font-weight: 560;
+  letter-spacing: 0.01em;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.taskbar-item:hover {
+  color: #f3efe6;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.taskbar-item[data-active="true"] {
+  color: var(--lichen-ink);
+  background: var(--lichen);
+}
+
+@media (min-width: 768px) {
+  .taskbar {
+    left: 50%;
+    right: auto;
+    bottom: 1rem;
+    width: min(560px, calc(100% - 2rem));
+    transform: translateX(-50%);
+    padding: 0.5rem;
+  }
+
+  .taskbar-item {
+    min-height: 3.5rem;
+    font-size: 0.72rem;
+  }
+}
+
+.panel {
+  background: var(--panel);
   border: 1px solid var(--line);
-  backdrop-filter: blur(16px);
+  border-radius: var(--radius);
+}
+
+.panel-ink {
+  background: linear-gradient(145deg, #24362d, #1a2820);
+  color: #f3efe6;
+  border-radius: var(--radius);
 }
 
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.6rem;
   border-radius: 999px;
-  padding: 0.7rem 1.1rem;
+  padding: 0.68rem 1.05rem;
   border: 1px solid transparent;
-  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+  transition: transform 160ms ease, background 160ms ease;
+  cursor: pointer;
 }
 
 .pill:hover {
@@ -146,25 +198,30 @@ textarea {
 }
 
 .pill-cta {
-  background: white;
-  color: var(--ink);
+  background: var(--ink);
+  color: white;
   font-weight: 560;
 }
 
 .pill-cta .arrow {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1.55rem;
+  height: 1.55rem;
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--lichen);
+  color: var(--lichen-ink);
+}
+
+.pill-soft {
+  background: rgba(18, 26, 22, 0.06);
+  color: var(--ink);
 }
 
 .pill-ghost {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: white;
+  background: rgba(243, 239, 230, 0.1);
+  border-color: rgba(243, 239, 230, 0.22);
+  color: #f3efe6;
 }
 
 .stat-number {
@@ -172,42 +229,40 @@ textarea {
   font-weight: 560;
   letter-spacing: -0.03em;
   line-height: 0.95;
-  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  font-size: clamp(2.2rem, 4.5vw, 3.3rem);
 }
 
 .serif-label {
   font-family: var(--font-fraunces), serif;
   font-style: italic;
-  letter-spacing: 0.01em;
 }
 
 .field {
   width: 100%;
-  border-radius: 1rem;
-  border: 1px solid rgba(19, 32, 26, 0.12);
-  background: rgba(255, 255, 255, 0.78);
-  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--line);
+  background: white;
+  padding: 0.8rem 0.95rem;
   color: var(--ink);
   outline: none;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .field:focus {
-  border-color: color-mix(in oklab, var(--ridge) 60%, white);
-  box-shadow: 0 0 0 4px rgba(95, 127, 110, 0.15);
+  border-color: color-mix(in oklab, var(--moss) 55%, white);
+  box-shadow: 0 0 0 4px rgba(47, 74, 60, 0.12);
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 0.45rem 0.9rem;
-  border: 1px solid rgba(19, 32, 26, 0.12);
-  background: rgba(255, 255, 255, 0.55);
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 253, 248, 0.8);
   color: var(--ink-soft);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: all 160ms ease;
+  transition: all 140ms ease;
 }
 
 .chip[data-active="true"] {
@@ -216,21 +271,37 @@ textarea {
   color: white;
 }
 
-.chip-light {
-  border-color: rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.88);
+.signal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
-.chip-light[data-active="true"] {
-  background: white;
-  color: var(--ink);
+.signal[data-severity="pass"] {
+  background: rgba(63, 125, 87, 0.12);
+  color: var(--signal-pass);
+}
+
+.signal[data-severity="warn"] {
+  background: rgba(196, 122, 58, 0.14);
+  color: var(--signal-warn);
+}
+
+.signal[data-severity="fail"] {
+  background: rgba(196, 92, 74, 0.14);
+  color: var(--signal-fail);
 }
 
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -238,39 +309,32 @@ textarea {
   }
 }
 
-@keyframes soft-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
 .animate-rise {
-  animation: rise-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: rise-in 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay-1 {
-  animation-delay: 120ms;
+  animation-delay: 100ms;
 }
 
 .animate-rise-delay-2 {
-  animation-delay: 220ms;
+  animation-delay: 180ms;
 }
 
 .animate-rise-delay-3 {
-  animation-delay: 320ms;
+  animation-delay: 260ms;
 }
 
-.floaty {
-  animation: soft-float 6s ease-in-out infinite;
+.topo-hero {
+  background:
+    linear-gradient(180deg, rgba(18, 28, 23, 0.15), rgba(18, 28, 23, 0.72)),
+    url("https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?auto=format&fit=crop&w=2000&q=80");
+  background-size: cover;
+  background-position: center 40%;
 }
 
 @media (max-width: 768px) {
   .app-shell {
-    border-width: 6px;
-    border-radius: 1.4rem;
+    border-radius: 1.1rem;
   }
 }

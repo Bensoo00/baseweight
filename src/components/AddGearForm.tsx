@@ -3,15 +3,15 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check } from "lucide-react";
+import { Weight } from "@/components/UnitProvider";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
   formatUsd,
-  gramsToDisplay,
   type Category,
 } from "@/lib/units";
 
-const steps = ["Basics", "Stats", "Flags"] as const;
+const steps = ["Basics", "Stats", "Defaults"] as const;
 
 export function AddGearForm() {
   const router = useRouter();
@@ -25,25 +25,20 @@ export function AddGearForm() {
     weightGrams: 300,
     priceUsd: 100,
     quantity: 1,
-    worn: false,
-    consumable: false,
-    packed: true,
+    wornDefault: false,
+    consumableDefault: false,
     notes: "",
   });
 
   const preview = useMemo(() => {
     const total = form.weightGrams * form.quantity;
-    const contributesToBase = form.packed && !form.worn && !form.consumable;
     return {
       total,
-      contributesToBase,
-      label: contributesToBase
-        ? "Adds to base weight"
-        : form.worn
-          ? "Worn — excluded from base weight"
-          : form.consumable
-            ? "Consumable — excluded from base weight"
-            : "Not packed",
+      label: form.wornDefault
+        ? "Default: worn on trips"
+        : form.consumableDefault
+          ? "Default: consumable"
+          : "Default: counts toward base weight",
     };
   }, [form]);
 
@@ -63,7 +58,7 @@ export function AddGearForm() {
   function submit() {
     setError(null);
     startTransition(async () => {
-      const res = await fetch("/api/gear", {
+      const res = await fetch("/api/locker", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -72,7 +67,7 @@ export function AddGearForm() {
         setError("Could not save gear. Check the fields and try again.");
         return;
       }
-      router.push("/pack");
+      router.push("/locker");
       router.refresh();
     });
   }
@@ -81,12 +76,12 @@ export function AddGearForm() {
     <div className="grid flex-1 gap-8 lg:grid-cols-[1.1fr_0.9fr]">
       <section>
         <div className="mb-6">
-          <p className="serif-label text-ink-soft">Add gear</p>
+          <p className="serif-label text-ink-soft">Add to locker</p>
           <p className="mt-1 text-xs text-ink-soft/70">
             Step {step + 1} of {steps.length} — {steps[step]}
           </p>
           <h1 className="mt-4 max-w-lg text-3xl font-semibold tracking-tight md:text-4xl">
-            Log kit in under a minute without spreadsheet pain.
+            Own it once. Pack it on every trip after.
           </h1>
         </div>
 
@@ -104,7 +99,7 @@ export function AddGearForm() {
           ))}
         </div>
 
-        <div className="space-y-4 rounded-[1.5rem] border border-black/8 bg-white/75 p-5 md:p-7">
+        <div className="panel space-y-4 p-5 md:p-7">
           {step === 0 && (
             <>
               <label className="block space-y-2">
@@ -149,7 +144,7 @@ export function AddGearForm() {
             <>
               <label className="block space-y-2">
                 <span className="text-sm font-semibold">
-                  Weight (grams) — {gramsToDisplay(form.weightGrams)}
+                  Weight (grams) — <Weight grams={form.weightGrams} />
                 </span>
                 <input
                   type="range"
@@ -158,7 +153,7 @@ export function AddGearForm() {
                   step={1}
                   value={form.weightGrams}
                   onChange={(e) => update("weightGrams", Number(e.target.value))}
-                  className="w-full accent-[var(--ridge)]"
+                  className="w-full accent-[var(--moss)]"
                 />
                 <input
                   className="field"
@@ -204,10 +199,13 @@ export function AddGearForm() {
             <div className="space-y-3">
               {(
                 [
-                  ["packed", "Packed in this kit", "Counts toward pack totals"],
-                  ["worn", "Worn while hiking", "Excluded from base weight"],
                   [
-                    "consumable",
+                    "wornDefault",
+                    "Usually worn while hiking",
+                    "Excluded from base weight on trips",
+                  ],
+                  [
+                    "consumableDefault",
                     "Consumable",
                     "Food, fuel, water — excluded from base weight",
                   ],
@@ -217,7 +215,7 @@ export function AddGearForm() {
                   key={key}
                   type="button"
                   onClick={() => update(key, !form[key])}
-                  className="flex w-full items-center justify-between rounded-2xl border border-black/8 bg-[#f5f8f5] px-4 py-4 text-left"
+                  className="flex w-full items-center justify-between rounded-2xl border border-black/8 bg-[var(--paper-2)] px-4 py-4 text-left"
                 >
                   <div>
                     <div className="font-semibold">{title}</div>
@@ -226,7 +224,7 @@ export function AddGearForm() {
                   <span
                     className={`grid h-9 w-9 place-items-center rounded-full ${
                       form[key]
-                        ? "bg-[var(--accent)] text-[var(--accent-ink)]"
+                        ? "bg-[var(--lichen)] text-[var(--lichen-ink)]"
                         : "bg-white text-ink-soft"
                     }`}
                   >
@@ -237,13 +235,13 @@ export function AddGearForm() {
             </div>
           )}
 
-          {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+          {error && <p className="text-sm text-[var(--signal-fail)]">{error}</p>}
 
           <div className="flex flex-wrap gap-3 pt-2">
             {step > 0 && (
               <button
                 type="button"
-                className="pill border border-black/10 bg-white"
+                className="pill pill-soft"
                 onClick={() => setStep((s) => s - 1)}
               >
                 Back
@@ -266,7 +264,7 @@ export function AddGearForm() {
                 <span className="arrow">
                   <Check size={14} />
                 </span>
-                {pending ? "Saving…" : "Save to pack"}
+                {pending ? "Saving…" : "Save to locker"}
               </button>
             )}
           </div>
@@ -274,7 +272,7 @@ export function AddGearForm() {
       </section>
 
       <aside className="space-y-4">
-        <div className="floaty rounded-[1.5rem] bg-gradient-to-br from-[#24362d] via-[#304a3c] to-[#1a2820] p-6 text-white">
+        <div className="panel-ink p-6">
           <p className="serif-label text-white/70">Live preview</p>
           <h2 className="mt-3 text-2xl font-semibold">
             {form.name || "Untitled gear"}
@@ -284,13 +282,13 @@ export function AddGearForm() {
           </p>
           <div className="mt-8 grid grid-cols-2 gap-4">
             <div>
-              <div className="stat-number text-3xl text-white">
-                {gramsToDisplay(preview.total)}
+              <div className="stat-number text-3xl text-[var(--paper)]">
+                <Weight grams={preview.total} />
               </div>
               <div className="mt-2 text-sm text-white/70">Total weight</div>
             </div>
             <div>
-              <div className="stat-number text-3xl text-white">
+              <div className="stat-number text-3xl text-[var(--paper)]">
                 {formatUsd(form.priceUsd * form.quantity)}
               </div>
               <div className="mt-2 text-sm text-white/70">Line value</div>
@@ -299,15 +297,6 @@ export function AddGearForm() {
           <p className="mt-6 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/85">
             {preview.label}
           </p>
-        </div>
-
-        <div className="rounded-[1.5rem] border border-black/8 bg-white/70 p-5">
-          <div className="text-sm font-semibold">Why these fields?</div>
-          <ul className="mt-3 space-y-2 text-sm leading-relaxed text-ink-soft">
-            <li>Base weight ignores worn clothes and consumables — classic UL math.</li>
-            <li>Category breakdown shows where ounces hide in your kit.</li>
-            <li>Price helps the recommender suggest upgrades within budget.</li>
-          </ul>
         </div>
       </aside>
     </div>

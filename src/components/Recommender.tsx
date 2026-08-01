@@ -4,11 +4,11 @@ import { useEffect, useState, useTransition } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import type { Trail } from "@/db/schema";
 import type { ScoredRecommendation } from "@/lib/recommend";
+import { Weight } from "@/components/UnitProvider";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
   formatUsd,
-  gramsToDisplay,
   type Category,
 } from "@/lib/units";
 
@@ -31,6 +31,7 @@ export function Recommender({ trails }: { trails: Trail[] }) {
   >("weight");
   const [result, setResult] = useState<Result | null>(null);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [addedId, setAddedId] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
 
   function run() {
@@ -56,8 +57,8 @@ export function Recommender({ trails }: { trails: Trail[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function addToPack(item: ScoredRecommendation) {
-    await fetch("/api/gear", {
+  async function addToLocker(item: ScoredRecommendation) {
+    await fetch("/api/locker", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -70,20 +71,22 @@ export function Recommender({ trails }: { trails: Trail[] }) {
         notes: `Recommended for ${result?.trail?.name ?? "your trip"}`,
       }),
     });
+    setAddedId(item.id);
+    setTimeout(() => setAddedId(null), 1600);
   }
 
   return (
     <div className="grid flex-1 gap-8 lg:grid-cols-[0.95fr_1.25fr]">
       <aside className="space-y-5">
         <div>
-          <p className="serif-label text-ink-soft">Recommender</p>
-          <p className="mt-1 text-xs text-ink-soft/70">(SQL catalog)</p>
+          <p className="serif-label text-ink-soft">Pack coach</p>
+          <p className="mt-1 text-xs text-ink-soft/70">SQL catalog · trail-aware</p>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">
             Tell us the trip. We&apos;ll shortlist the kit.
           </h1>
         </div>
 
-        <div className="space-y-4 rounded-[1.5rem] border border-black/8 bg-white/75 p-5">
+        <div className="panel space-y-4 p-5">
           <label className="block space-y-2">
             <span className="text-sm font-semibold">Trail</span>
             <select
@@ -232,7 +235,7 @@ export function Recommender({ trails }: { trails: Trail[] }) {
           </div>
         </div>
 
-        <div className="divide-y divide-black/8 rounded-[1.5rem] border border-black/8 bg-white/70">
+        <div className="divide-y divide-black/8 overflow-hidden rounded-[1.25rem] border border-black/8 bg-white/80">
           {(result?.recommendations ?? []).map((item) => {
             const open = openId === item.id;
             return (
@@ -253,7 +256,7 @@ export function Recommender({ trails }: { trails: Trail[] }) {
                   </div>
                   <div className="hidden text-right sm:block">
                     <div className="font-semibold">
-                      {gramsToDisplay(item.weightGrams)}
+                      <Weight grams={item.weightGrams} />
                     </div>
                     <div className="text-sm text-ink-soft">
                       {formatUsd(item.priceUsd)}
@@ -268,7 +271,7 @@ export function Recommender({ trails }: { trails: Trail[] }) {
                 </button>
 
                 {open && (
-                  <div className="mt-4 space-y-3 rounded-2xl bg-[#f3f6f3] p-4">
+                  <div className="mt-4 space-y-3 rounded-2xl bg-[var(--paper-2)] p-4">
                     <p className="text-sm leading-relaxed text-ink-soft">
                       {item.description}
                     </p>
@@ -293,12 +296,12 @@ export function Recommender({ trails }: { trails: Trail[] }) {
                     <button
                       type="button"
                       className="pill pill-cta"
-                      onClick={() => addToPack(item)}
+                      onClick={() => addToLocker(item)}
                     >
                       <span className="arrow">
                         <ArrowRight size={14} />
                       </span>
-                      Add to my pack
+                      {addedId === item.id ? "Added to locker" : "Add to locker"}
                     </button>
                   </div>
                 )}

@@ -1,6 +1,16 @@
-import { count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { db } from "./index";
-import { catalogItems, trails, userGear } from "./schema";
+import {
+  catalogItems,
+  communityComments,
+  communityPosts,
+  lockerItems,
+  trails,
+  tripItems,
+  trips,
+} from "./schema";
+import { shareSlug } from "@/lib/ids";
+import { computePackStats, tripItemsToPackable } from "@/lib/pack-stats";
 
 const trailSeed = [
   {
@@ -12,6 +22,9 @@ const trailSeed = [
     climate: "alpine" as const,
     seasonHint: "Jul–Sep",
     notes: "High elevation, cold nights, bear canisters required.",
+    minRValue: 4.5,
+    requiresBearCanister: true,
+    requiresTraction: false,
   },
   {
     name: "Appalachian Trail (Smokies)",
@@ -22,6 +35,9 @@ const trailSeed = [
     climate: "forest" as const,
     seasonHint: "Apr–Oct",
     notes: "Humid forest, frequent rain, shelter network available.",
+    minRValue: 3.5,
+    requiresBearCanister: false,
+    requiresTraction: false,
   },
   {
     name: "Wonderland Trail",
@@ -32,6 +48,9 @@ const trailSeed = [
     climate: "alpine" as const,
     seasonHint: "Jul–Sep",
     notes: "Volcanic alpine, snowfields early season, variable weather.",
+    minRValue: 4.5,
+    requiresBearCanister: true,
+    requiresTraction: true,
   },
   {
     name: "Zion Narrows",
@@ -42,6 +61,9 @@ const trailSeed = [
     climate: "desert" as const,
     seasonHint: "Jun–Oct",
     notes: "Canyon water hiking, flash flood risk, warm days.",
+    minRValue: 2,
+    requiresBearCanister: false,
+    requiresTraction: false,
   },
   {
     name: "Lost Coast Trail",
@@ -52,6 +74,9 @@ const trailSeed = [
     climate: "coastal" as const,
     seasonHint: "May–Oct",
     notes: "Tide tables critical, wind, salt spray, soft sand.",
+    minRValue: 3,
+    requiresBearCanister: false,
+    requiresTraction: false,
   },
   {
     name: "Presidential Traverse",
@@ -62,6 +87,9 @@ const trailSeed = [
     climate: "alpine" as const,
     seasonHint: "Jun–Sep",
     notes: "Exposed ridgeline, severe weather common above treeline.",
+    minRValue: 5,
+    requiresBearCanister: false,
+    requiresTraction: true,
   },
 ];
 
@@ -366,7 +394,7 @@ const catalogSeed = [
   },
 ];
 
-const starterPack = [
+const starterLocker = [
   {
     name: "Exos 48",
     brand: "Osprey",
@@ -374,10 +402,20 @@ const starterPack = [
     weightGrams: 1190,
     priceUsd: 240,
     quantity: 1,
-    worn: false,
-    consumable: false,
-    packed: true,
+    wornDefault: false,
+    consumableDefault: false,
     notes: "Primary pack",
+  },
+  {
+    name: "X-Mid 1",
+    brand: "Durston",
+    category: "shelter" as const,
+    weightGrams: 765,
+    priceUsd: 259,
+    quantity: 1,
+    wornDefault: false,
+    consumableDefault: false,
+    notes: "",
   },
   {
     name: "NeoAir XLite NXT",
@@ -386,10 +424,20 @@ const starterPack = [
     weightGrams: 371,
     priceUsd: 210,
     quantity: 1,
-    worn: false,
-    consumable: false,
-    packed: true,
+    wornDefault: false,
+    consumableDefault: false,
     notes: "",
+  },
+  {
+    name: "Katabatic Flex 22",
+    brand: "Katabatic",
+    category: "sleep" as const,
+    weightGrams: 595,
+    priceUsd: 390,
+    quantity: 1,
+    wornDefault: false,
+    consumableDefault: false,
+    notes: "Quilt",
   },
   {
     name: "Alpha Fleece Hoody",
@@ -398,10 +446,20 @@ const starterPack = [
     weightGrams: 148,
     priceUsd: 95,
     quantity: 1,
-    worn: true,
-    consumable: false,
-    packed: true,
+    wornDefault: true,
+    consumableDefault: false,
     notes: "Worn while hiking",
+  },
+  {
+    name: "Torrentshell 3L",
+    brand: "Patagonia",
+    category: "clothing" as const,
+    weightGrams: 343,
+    priceUsd: 179,
+    quantity: 1,
+    wornDefault: false,
+    consumableDefault: false,
+    notes: "Rain shell",
   },
   {
     name: "BeFree 1.0L",
@@ -410,9 +468,19 @@ const starterPack = [
     weightGrams: 63,
     priceUsd: 45,
     quantity: 1,
-    worn: false,
-    consumable: false,
-    packed: true,
+    wornDefault: false,
+    consumableDefault: false,
+    notes: "",
+  },
+  {
+    name: "PocketRocket 2",
+    brand: "MSR",
+    category: "cook" as const,
+    weightGrams: 73,
+    priceUsd: 50,
+    quantity: 1,
+    wornDefault: false,
+    consumableDefault: false,
     notes: "",
   },
   {
@@ -422,10 +490,20 @@ const starterPack = [
     weightGrams: 200,
     priceUsd: 8,
     quantity: 1,
-    worn: false,
-    consumable: true,
-    packed: true,
+    wornDefault: false,
+    consumableDefault: true,
     notes: "100g iso-butane",
+  },
+  {
+    name: "BV500 BearVault",
+    brand: "BearVault",
+    category: "other" as const,
+    weightGrams: 1160,
+    priceUsd: 90,
+    quantity: 1,
+    wornDefault: false,
+    consumableDefault: false,
+    notes: "Bear canister",
   },
 ];
 
@@ -433,6 +511,23 @@ export async function seedIfEmpty() {
   const [{ value: trailCount }] = await db.select({ value: count() }).from(trails);
   if (trailCount === 0) {
     await db.insert(trails).values(trailSeed);
+  } else {
+    // Backfill trail requirement fields if null-ish on older rows
+    const existing = await db.select().from(trails);
+    for (const trail of existing) {
+      const match = trailSeed.find((t) => t.name === trail.name);
+      if (!match) continue;
+      if (trail.minRValue == null) {
+        await db
+          .update(trails)
+          .set({
+            minRValue: match.minRValue,
+            requiresBearCanister: match.requiresBearCanister,
+            requiresTraction: match.requiresTraction,
+          })
+          .where(eq(trails.id, trail.id));
+      }
+    }
   }
 
   const [{ value: catalogCount }] = await db
@@ -442,13 +537,162 @@ export async function seedIfEmpty() {
     await db.insert(catalogItems).values(catalogSeed);
   }
 
-  const [{ value: gearCount }] = await db.select({ value: count() }).from(userGear);
-  if (gearCount === 0) {
-    await db.insert(userGear).values(
-      starterPack.map((item) => ({
+  const existingLocker = await db.select().from(lockerItems);
+  if (existingLocker.length === 0) {
+    await db.insert(lockerItems).values(
+      starterLocker.map((item) => ({
         ...item,
         createdAt: new Date().toISOString(),
       })),
     );
+  } else {
+    const names = new Set(
+      existingLocker.map((i) => `${i.brand}::${i.name}`.toLowerCase()),
+    );
+    const missing = starterLocker.filter(
+      (item) => !names.has(`${item.brand}::${item.name}`.toLowerCase()),
+    );
+    if (missing.length) {
+      await db.insert(lockerItems).values(
+        missing.map((item) => ({
+          ...item,
+          createdAt: new Date().toISOString(),
+        })),
+      );
+    }
+  }
+
+  const [{ value: tripCount }] = await db.select({ value: count() }).from(trips);
+  const locker = await db.select().from(lockerItems);
+  if (tripCount === 0) {
+    const allTrails = await db.select().from(trails);
+    const jmt = allTrails.find((t) => t.name === "John Muir Trail");
+    const now = new Date().toISOString();
+    const [trip] = await db
+      .insert(trips)
+      .values({
+        name: "JMT Section — sample trip",
+        trailId: jmt?.id ?? null,
+        nights: 4,
+        season: "summer",
+        targetBaseWeightGrams: 4536,
+        shareSlug: shareSlug(),
+        notes: "Sample trip built from your locker. Edit freely.",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    if (trip && locker.length) {
+      await db.insert(tripItems).values(
+        locker.map((item) => ({
+          tripId: trip.id,
+          lockerItemId: item.id,
+          name: item.name,
+          brand: item.brand,
+          category: item.category,
+          weightGrams: item.weightGrams,
+          priceUsd: item.priceUsd,
+          quantity: item.quantity,
+          worn: item.wornDefault,
+          consumable: item.consumableDefault,
+          notes: item.notes,
+        })),
+      );
+    }
+  } else if (locker.length) {
+    // Keep sample trip in sync with newly added locker staples
+    const sample = (await db.select().from(trips)).find((t) =>
+      t.name.includes("sample trip"),
+    );
+    if (sample) {
+      const packed = await db
+        .select()
+        .from(tripItems)
+        .where(eq(tripItems.tripId, sample.id));
+      const packedKeys = new Set(
+        packed.map((p) => `${p.brand}::${p.name}`.toLowerCase()),
+      );
+      const missing = locker.filter(
+        (item) => !packedKeys.has(`${item.brand}::${item.name}`.toLowerCase()),
+      );
+      if (missing.length) {
+        await db.insert(tripItems).values(
+          missing.map((item) => ({
+            tripId: sample.id,
+            lockerItemId: item.id,
+            name: item.name,
+            brand: item.brand,
+            category: item.category,
+            weightGrams: item.weightGrams,
+            priceUsd: item.priceUsd,
+            quantity: item.quantity,
+            worn: item.wornDefault,
+            consumable: item.consumableDefault,
+            notes: item.notes,
+          })),
+        );
+      }
+    }
+  }
+
+  const [{ value: postCount }] = await db
+    .select({ value: count() })
+    .from(communityPosts);
+  if (postCount === 0) {
+    const sample =
+      (await db.select().from(trips)).find((t) =>
+        t.name.includes("sample trip"),
+      ) ?? (await db.select().from(trips))[0];
+    if (sample) {
+      const items = await db
+        .select()
+        .from(tripItems)
+        .where(eq(tripItems.tripId, sample.id));
+      const stats = computePackStats(tripItemsToPackable(items));
+      const trail = sample.trailId
+        ? (
+            await db
+              .select()
+              .from(trails)
+              .where(eq(trails.id, sample.trailId))
+              .limit(1)
+          )[0]
+        : null;
+      const [post] = await db
+        .insert(communityPosts)
+        .values({
+          tripId: sample.id,
+          shareSlug: sample.shareSlug,
+          title: "JMT section shakedown — first draft",
+          body: "Looking for cuts before I mail the bear can. Base feels heavy around the canister + pack. Roast me kindly.",
+          authorName: "ridgewalker",
+          trailName: trail?.name ?? "John Muir Trail",
+          nights: sample.nights,
+          season: sample.season,
+          baseWeightGrams: stats.baseWeightGrams,
+          packWeightGrams: stats.packWeightGrams,
+          itemCount: stats.committedCount,
+          clonesCount: 0,
+          createdAt: new Date().toISOString(),
+        })
+        .returning();
+      if (post) {
+        await db.insert(communityComments).values([
+          {
+            postId: post.id,
+            authorName: "ozcounter",
+            body: "Swap the Exos if you can — a frameless 40L would save real ounces if your food carries stay short.",
+            createdAt: new Date().toISOString(),
+          },
+          {
+            postId: post.id,
+            authorName: "trailmath",
+            body: "Love seeing pack weight (total − worn) called out. Bar breakdown > pie chart forever.",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+      }
+    }
   }
 }

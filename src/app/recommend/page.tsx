@@ -11,7 +11,7 @@ export default async function RecommendPage() {
 
   return (
     <Shell active="/recommend">
-      <div className="flex-1 px-5 py-6 md:px-8 md:py-8">
+      <div className="flex-1 px-5 py-6 md:px-7 md:py-8">
         <Recommender trails={trails} />
       </div>
     </Shell>

@@ -1,8 +1,9 @@
+import "./load-env";
 import { seedIfEmpty } from "../db/seed";
 
 async function main() {
   await seedIfEmpty();
-  console.log("Database ready at data/baseweight.sqlite");
+  console.log("Postgres seed complete (empty tables filled).");
 }
 
 main().catch((error) => {

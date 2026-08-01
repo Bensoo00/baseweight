@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Outfit } from "next/font/google";
+import { UnitProvider } from "@/components/UnitProvider";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -13,9 +14,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Baseweight — backpacking gear tracker",
+  title: "Baseweight — pack coach for real trails",
   description:
-    "Track pack weight, organize mountaineering gear, and get SQL-powered recommendations for your next trail.",
+    "Gear locker, trip packs, trail gap checks, and a community shakedown feed — with oz/g toggle and shareable lists.",
 };
 
 export default function RootLayout({
@@ -25,7 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${outfit.variable} ${fraunces.variable} h-full`}>
-      <body className="min-h-full antialiased">{children}</body>
+      <body className="min-h-full antialiased">
+        <UnitProvider>{children}</UnitProvider>
+      </body>
     </html>
   );
 }

@@ -1,92 +1,132 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Backpack, MessageSquare, Package, Sparkles } from "lucide-react";
 import { Shell } from "@/components/Shell";
-import { StatGrid } from "@/components/StatGrid";
-import { seedIfEmpty } from "@/db/seed";
+import { Weight } from "@/components/UnitProvider";
 import { db } from "@/db";
-import { userGear } from "@/db/schema";
-import { computePackStats } from "@/lib/pack-stats";
-import { gramsToDisplay, formatUsd } from "@/lib/units";
+import { lockerItems } from "@/db/schema";
+import { seedIfEmpty } from "@/db/seed";
+import { getTripDetail, listTrips } from "@/lib/trips";
+import { formatUsd } from "@/lib/units";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   await seedIfEmpty();
-  const gear = await db.select().from(userGear);
-  const stats = computePackStats(gear);
+  const locker = await db.select().from(lockerItems);
+  const tripRows = await listTrips();
+  const latest = tripRows[0] ? await getTripDetail(tripRows[0].id) : null;
+  const openChecks = latest
+    ? latest.checks.filter((c) => c.severity !== "pass").length
+    : 0;
+  const lockerValue = locker.reduce((s, i) => s + i.priceUsd * i.quantity, 0);
+
+  const actions = [
+    {
+      href: "/trips",
+      title: "Trips",
+      detail: "Build a pack for a hike",
+      icon: Backpack,
+    },
+    {
+      href: "/locker",
+      title: "Locker",
+      detail: "Gear you already own",
+      icon: Package,
+    },
+    {
+      href: "/recommend",
+      title: "Coach",
+      detail: "Get gear suggestions",
+      icon: Sparkles,
+    },
+    {
+      href: "/community",
+      title: "Community",
+      detail: "Share and clone packs",
+      icon: MessageSquare,
+    },
+  ];
 
   return (
-    <Shell tone="immersive" active="/">
-      <section className="relative flex flex-1 flex-col overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2000&q=80')",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/25 to-black/55" />
-
-        <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-16 pt-10 text-center">
-          <p className="serif-label animate-rise text-white/75">Baseweight</p>
-          <h1 className="animate-rise animate-rise-delay-1 mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white md:text-6xl">
-            Know every ounce before you hit the trail.
+    <Shell>
+      <div className="flex-1 px-5 py-6 md:px-8 md:py-8">
+        <div className="mb-6">
+          <p className="serif-label text-ink-soft">Home</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
+            What do you want to do?
           </h1>
-          <p className="animate-rise animate-rise-delay-2 mt-5 max-w-xl text-base leading-relaxed text-white/80 md:text-lg">
-            A friendly gear locker for backpackers and mountaineers — track base
-            weight, compare kits, and get recommendations tuned to budget, trail,
-            and conditions.
+          <p className="mt-2 max-w-xl text-ink-soft">
+            Use the taskbar below anytime. Start with your locker, then make a
+            trip pack.
           </p>
-          <div className="animate-rise animate-rise-delay-3 mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/pack" className="pill pill-cta">
-              <span className="arrow">
-                <ArrowRight size={14} />
-              </span>
-              Open my pack
-            </Link>
-            <Link href="/recommend" className="pill pill-ghost">
-              Gear recommender
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#f4f7f5] px-6 py-10 text-ink md:px-10 md:py-12">
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="serif-label text-ink-soft">Your kit snapshot</p>
-            <p className="mt-1 text-xs text-ink-soft/80">(01 — live)</p>
-          </div>
-          <h2 className="max-w-xl text-2xl font-semibold tracking-tight md:text-3xl">
-            Real stats from the gear you already own — not vanity metrics.
-          </h2>
         </div>
 
-        <StatGrid
-          items={[
-            {
-              value: gramsToDisplay(stats.baseWeightGrams),
-              label: "Base weight",
-              detail:
-                "Packed gear excluding worn clothing and consumables. The number ultralighters obsess over.",
-            },
-            {
-              value: String(stats.itemCount),
-              label: "Packed items",
-              detail:
-                "Everything currently marked packed in your kit, across categories from shelter to stove fuel.",
-            },
-            {
-              value: formatUsd(stats.totalValueUsd),
-              label: "Kit value",
-              detail:
-                "Rough replacement cost of your tracked inventory — useful when budgeting upgrades.",
-            },
-          ]}
-        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {actions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="panel flex items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-ink text-lichen">
+                  <Icon size={22} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-lg font-semibold">{action.title}</span>
+                  <span className="block text-sm text-ink-soft">{action.detail}</span>
+                </span>
+                <ArrowRight size={18} className="shrink-0 text-ink-soft" />
+              </Link>
+            );
+          })}
+        </div>
 
-        <div className="mt-10 h-16 overflow-hidden rounded-[1.4rem] bg-gradient-to-r from-[#2f4a3c] via-[#5f7f6e] to-[#d4a35c]" />
-      </section>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="panel p-5">
+            <div className="text-sm text-ink-soft">Locker</div>
+            <div className="mt-2 text-2xl font-semibold">
+              {locker.length} items
+            </div>
+            <div className="mt-1 text-sm text-ink-soft">
+              {formatUsd(lockerValue)} owned
+            </div>
+          </div>
+          <div className="panel p-5">
+            <div className="text-sm text-ink-soft">Latest trip base weight</div>
+            <div className="mt-2 text-2xl font-semibold">
+              {latest ? (
+                <Weight grams={latest.stats.baseWeightGrams} />
+              ) : (
+                "No trips yet"
+              )}
+            </div>
+            <div className="mt-1 text-sm text-ink-soft">
+              {latest ? latest.trip.name : "Create one from Trips"}
+            </div>
+          </div>
+          <div className="panel p-5">
+            <div className="text-sm text-ink-soft">Open trail checks</div>
+            <div className="mt-2 text-2xl font-semibold">{openChecks}</div>
+            <div className="mt-1 text-sm text-ink-soft">
+              {latest ? "On your latest trip" : "Clears when a trip is ready"}
+            </div>
+          </div>
+        </div>
+
+        {latest && (
+          <Link
+            href={`/trips/${latest.trip.id}`}
+            className="pill pill-cta mt-8 inline-flex"
+          >
+            <span className="arrow">
+              <ArrowRight size={14} />
+            </span>
+            Continue {latest.trip.name}
+          </Link>
+        )}
+      </div>
     </Shell>
   );
 }

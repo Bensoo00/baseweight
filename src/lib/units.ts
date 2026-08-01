@@ -1,4 +1,6 @@
-export function gramsToDisplay(grams: number, unit: "oz" | "g" = "oz") {
+export type WeightUnit = "oz" | "g";
+
+export function gramsToDisplay(grams: number, unit: WeightUnit = "oz") {
   if (unit === "g") return `${Math.round(grams)} g`;
   const oz = grams / 28.3495;
   if (oz >= 16) {

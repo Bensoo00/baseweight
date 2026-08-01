@@ -1,81 +1,59 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import fs from "fs";
-import path from "path";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "./schema";
 
-const dataDir = path.join(process.cwd(), "data");
-const dbPath = path.join(dataDir, "baseweight.sqlite");
-
-function ensureDb() {
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-
-  const sqlite = new Database(dbPath);
-  sqlite.pragma("journal_mode = WAL");
-
-  sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS trails (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      region TEXT NOT NULL,
-      distance_miles REAL NOT NULL,
-      elevation_gain_ft INTEGER NOT NULL,
-      difficulty TEXT NOT NULL,
-      climate TEXT NOT NULL,
-      season_hint TEXT NOT NULL,
-      notes TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS catalog_items (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      brand TEXT NOT NULL,
-      category TEXT NOT NULL,
-      weight_grams INTEGER NOT NULL,
-      price_usd REAL NOT NULL,
-      r_value REAL,
-      capacity_liters REAL,
-      temperature_rating_f INTEGER,
-      waterproof_rating TEXT,
-      durability INTEGER NOT NULL,
-      comfort INTEGER NOT NULL,
-      skill_level TEXT NOT NULL,
-      best_for TEXT NOT NULL,
-      description TEXT NOT NULL,
-      image_hint TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS user_gear (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      brand TEXT NOT NULL DEFAULT '',
-      category TEXT NOT NULL,
-      weight_grams INTEGER NOT NULL,
-      price_usd REAL NOT NULL DEFAULT 0,
-      quantity INTEGER NOT NULL DEFAULT 1,
-      worn INTEGER NOT NULL DEFAULT 0,
-      consumable INTEGER NOT NULL DEFAULT 0,
-      packed INTEGER NOT NULL DEFAULT 1,
-      notes TEXT NOT NULL DEFAULT '',
-      catalog_item_id INTEGER,
-      created_at TEXT NOT NULL
-    );
-  `);
-
-  return sqlite;
-}
+export type AppDb = NodePgDatabase<typeof schema>;
 
 const globalForDb = globalThis as unknown as {
-  __baseweightSqlite?: Database.Database;
-  __baseweightDb?: ReturnType<typeof drizzle<typeof schema>>;
+  __baseweightPool?: Pool;
+  __baseweightDb?: AppDb;
 };
 
-const sqlite = globalForDb.__baseweightSqlite ?? ensureDb();
-export const db = globalForDb.__baseweightDb ?? drizzle(sqlite, { schema });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__baseweightSqlite = sqlite;
-  globalForDb.__baseweightDb = db;
+function requireDatabaseUrl() {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL is required. Copy .env.example → .env.local and paste your Render Postgres External Database URL.",
+    );
+  }
+  return url;
 }
+
+function getPool() {
+  if (globalForDb.__baseweightPool) return globalForDb.__baseweightPool;
+
+  const connectionString = requireDatabaseUrl();
+  const needsSsl =
+    connectionString.includes("render.com") ||
+    process.env.PGSSL === "true" ||
+    process.env.NODE_ENV === "production";
+
+  const pool = new Pool({
+    connectionString,
+    max: process.env.VERCEL || process.env.NODE_ENV === "production" ? 3 : 5,
+    ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+  });
+
+  if (process.env.NODE_ENV !== "production") {
+    globalForDb.__baseweightPool = pool;
+  }
+
+  return pool;
+}
+
+function getDb(): AppDb {
+  if (globalForDb.__baseweightDb) return globalForDb.__baseweightDb;
+  const db = drizzle(getPool(), { schema });
+  if (process.env.NODE_ENV !== "production") {
+    globalForDb.__baseweightDb = db;
+  }
+  return db;
+}
+
+/** Lazy DB proxy so `next build` can import modules without DATABASE_URL. */
+export const db = new Proxy({} as AppDb, {
+  get(_target, prop, receiver) {
+    const value = Reflect.get(getDb(), prop, receiver);
+    return typeof value === "function" ? value.bind(getDb()) : value;
+  },
+});
