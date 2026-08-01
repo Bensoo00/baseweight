@@ -33,11 +33,17 @@ const customItemSchema = z.object({
 
 const patchSchema = z.object({
   id: z.number().int().positive(),
+  name: z.string().min(1).max(120).optional(),
+  brand: z.string().max(80).optional(),
+  weightGrams: z.number().int().positive().max(50000).optional(),
+  priceUsd: z.number().min(0).max(20000).optional(),
+  notes: z.string().max(500).optional(),
   worn: z.boolean().optional(),
   consumable: z.boolean().optional(),
   maybe: z.boolean().optional(),
   quantity: z.number().int().min(0).max(99).optional(),
   category: z.enum(CATEGORIES).optional(),
+  syncLocker: z.boolean().optional().default(true),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -98,7 +104,21 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  const existing = owned.items.find((i) => i.id === parsed.data.id);
+  if (!existing) {
+    return NextResponse.json({ error: "Item not found" }, { status: 404 });
+  }
+
   const updates: Partial<typeof tripItems.$inferInsert> = {};
+  if (parsed.data.name) updates.name = parsed.data.name;
+  if (typeof parsed.data.brand === "string") updates.brand = parsed.data.brand;
+  if (typeof parsed.data.weightGrams === "number") {
+    updates.weightGrams = parsed.data.weightGrams;
+  }
+  if (typeof parsed.data.priceUsd === "number") {
+    updates.priceUsd = parsed.data.priceUsd;
+  }
+  if (typeof parsed.data.notes === "string") updates.notes = parsed.data.notes;
   if (typeof parsed.data.worn === "boolean") updates.worn = parsed.data.worn;
   if (typeof parsed.data.consumable === "boolean") {
     updates.consumable = parsed.data.consumable;
@@ -115,12 +135,55 @@ export async function PATCH(request: Request, { params }: Params) {
     .where(
       and(eq(tripItems.id, parsed.data.id), eq(tripItems.tripId, tripId)),
     );
+
+  let lockerSynced = false;
+  if (
+    parsed.data.syncLocker !== false &&
+    existing.lockerItemId &&
+    Object.keys(updates).length > 0
+  ) {
+    const lockerUpdates: Partial<typeof lockerItems.$inferInsert> = {};
+    if (updates.name) lockerUpdates.name = updates.name;
+    if (typeof updates.brand === "string") lockerUpdates.brand = updates.brand;
+    if (typeof updates.weightGrams === "number") {
+      lockerUpdates.weightGrams = updates.weightGrams;
+    }
+    if (typeof updates.priceUsd === "number") {
+      lockerUpdates.priceUsd = updates.priceUsd;
+    }
+    if (typeof updates.notes === "string") lockerUpdates.notes = updates.notes;
+    if (typeof updates.quantity === "number" && updates.quantity > 0) {
+      lockerUpdates.quantity = updates.quantity;
+    }
+    if (updates.category) lockerUpdates.category = updates.category;
+    if (typeof updates.worn === "boolean") {
+      lockerUpdates.wornDefault = updates.worn;
+    }
+    if (typeof updates.consumable === "boolean") {
+      lockerUpdates.consumableDefault = updates.consumable;
+    }
+
+    if (Object.keys(lockerUpdates).length) {
+      await db
+        .update(lockerItems)
+        .set(lockerUpdates)
+        .where(
+          and(
+            eq(lockerItems.id, existing.lockerItemId),
+            eq(lockerItems.userId, user.id),
+          ),
+        );
+      lockerSynced = true;
+    }
+  }
+
   await db
     .update(trips)
     .set({ updatedAt: new Date().toISOString() })
     .where(and(eq(trips.id, tripId), eq(trips.userId, user.id)));
 
-  return NextResponse.json(await getOwnedTripDetail(tripId, user.id));
+  const detail = await getOwnedTripDetail(tripId, user.id);
+  return NextResponse.json({ ...detail, lockerSynced });
 }
 
 export async function DELETE(request: Request, { params }: Params) {

@@ -184,7 +184,7 @@ export function LockerClient({
                                 Move to category
                               </span>
                               <select
-                                className="field"
+                                className="field field-sm field-category"
                                 value={item.category}
                                 onChange={(e) =>
                                   moveCategory(

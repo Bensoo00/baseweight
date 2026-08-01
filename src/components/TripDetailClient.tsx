@@ -110,6 +110,14 @@ export function TripDetailClient({
     setDetail(data);
   }
 
+  function applyPatchResponse(data: Detail & { lockerSynced?: boolean }) {
+    const { lockerSynced, ...rest } = data;
+    applyDetail(rest as Detail);
+    if (lockerSynced) {
+      window.dispatchEvent(new CustomEvent(LOCKER_UPDATED_EVENT));
+    }
+  }
+
   function saveTrip(patch: Record<string, unknown>) {
     startTransition(async () => {
       const res = await fetch(`/api/trips/${detail.trip.id}`, {
@@ -165,7 +173,8 @@ export function TripDetailClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...patch }),
       });
-      applyDetail(await res.json());
+      if (!res.ok) return;
+      applyPatchResponse(await res.json());
     });
   }
 
@@ -662,7 +671,7 @@ export function TripDetailClient({
               inventory.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {groupedItems.map(([category, list]) => {
                 const isCollapsed = collapsedCats[category];
                 const grams = list.reduce(
@@ -672,11 +681,11 @@ export function TripDetailClient({
                 return (
                   <div
                     key={category}
-                    className="overflow-hidden rounded-[1.25rem] border border-black/10 bg-white/90"
+                    className="overflow-hidden rounded-xl border border-black/10 bg-white/90"
                   >
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left"
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
                       onClick={() =>
                         setCollapsedCats((prev) => ({
                           ...prev,
@@ -684,17 +693,16 @@ export function TripDetailClient({
                         }))
                       }
                     >
-                      <div>
-                        <div className="font-semibold">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold leading-tight">
                           {CATEGORY_LABELS[category]}
                         </div>
-                        <div className="text-sm text-ink-soft">
-                          {list.length} item{list.length === 1 ? "" : "s"} ·{" "}
-                          <Weight grams={grams} />
+                        <div className="text-xs text-ink-soft">
+                          {list.length} · <Weight grams={grams} />
                         </div>
                       </div>
                       <ChevronDown
-                        size={18}
+                        size={16}
                         className={`shrink-0 text-ink-soft transition ${
                           isCollapsed ? "-rotate-90" : ""
                         }`}
@@ -706,60 +714,50 @@ export function TripDetailClient({
                         {list.map((item) => {
                           const open = openId === item.id;
                           return (
-                            <div key={item.id} className="px-5 py-3.5">
+                            <div key={item.id} className="px-3 py-2">
                               <button
                                 type="button"
-                                className="flex w-full items-center gap-4 text-left"
+                                className="flex w-full items-center gap-2 text-left"
                                 onClick={() =>
                                   setOpenId(open ? null : item.id)
                                 }
                               >
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate font-semibold">
+                                  <div className="truncate text-sm font-medium leading-tight">
                                     {item.name}
-                                    {item.quantity === 0 && (
-                                      <span className="ml-2 rounded-full bg-black/8 px-2 py-0.5 text-xs font-medium">
-                                        qty 0
-                                      </span>
-                                    )}
                                     {item.quantity > 1 && (
-                                      <span className="ml-2 rounded-full bg-black/8 px-2 py-0.5 text-xs font-medium">
+                                      <span className="ml-1.5 rounded-full bg-black/8 px-1.5 py-0.5 text-[10px] font-medium">
                                         ×{item.quantity}
                                       </span>
                                     )}
                                   </div>
-                                  <div className="truncate text-sm text-ink-soft">
+                                  <div className="truncate text-xs text-ink-soft">
                                     {item.brand || "Unbranded"}
                                     {item.worn ? " · Worn" : ""}
-                                    {item.consumable ? " · Consumable" : ""}
+                                    {item.consumable ? " · Cons." : ""}
                                     {item.maybe ? " · Maybe" : ""}
                                   </div>
                                 </div>
-                                <div className="hidden text-right sm:block">
-                                  <div className="font-semibold tabular-nums">
-                                    <Weight
-                                      grams={item.weightGrams * item.quantity}
-                                    />
-                                  </div>
-                                  <div className="text-sm text-ink-soft">
-                                    {formatUsd(item.priceUsd)}
-                                  </div>
+                                <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
+                                  <Weight
+                                    grams={item.weightGrams * item.quantity}
+                                  />
                                 </div>
-                                <span className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-white">
+                                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-black/10 bg-white">
                                   <ArrowUpRight
-                                    size={16}
+                                    size={13}
                                     className={`transition ${open ? "rotate-45" : ""}`}
                                   />
                                 </span>
                               </button>
                               {open && (
-                                <div className="mt-3 space-y-3 rounded-2xl bg-[var(--paper-2)] p-4">
-                                  <label className="block space-y-1.5">
-                                    <span className="text-sm font-semibold">
+                                <div className="mt-2 space-y-2 rounded-xl bg-[#e8eee6] p-3">
+                                  <label className="block space-y-1">
+                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
                                       Category
                                     </span>
                                     <select
-                                      className="field"
+                                      className="field field-sm field-category"
                                       value={item.category}
                                       onChange={(e) =>
                                         patchItem(item.id, {
@@ -774,10 +772,125 @@ export function TripDetailClient({
                                       ))}
                                     </select>
                                   </label>
-                                  <div className="flex flex-wrap gap-2">
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    <label className="block space-y-1 sm:col-span-2">
+                                      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                                        Name
+                                      </span>
+                                      <input
+                                        className="field field-sm"
+                                        defaultValue={item.name}
+                                        key={`name-${item.id}-${item.name}`}
+                                        onBlur={(e) => {
+                                          const value = e.target.value.trim();
+                                          if (value && value !== item.name) {
+                                            patchItem(item.id, { name: value });
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                    <label className="block space-y-1">
+                                      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                                        Brand
+                                      </span>
+                                      <input
+                                        className="field field-sm"
+                                        defaultValue={item.brand}
+                                        key={`brand-${item.id}-${item.brand}`}
+                                        onBlur={(e) => {
+                                          if (e.target.value !== item.brand) {
+                                            patchItem(item.id, {
+                                              brand: e.target.value,
+                                            });
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                    <label className="block space-y-1">
+                                      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                                        Weight (g)
+                                      </span>
+                                      <input
+                                        className="field field-sm"
+                                        type="number"
+                                        min={1}
+                                        defaultValue={item.weightGrams}
+                                        key={`wt-${item.id}-${item.weightGrams}`}
+                                        onBlur={(e) => {
+                                          const value = Number(e.target.value);
+                                          if (
+                                            value > 0 &&
+                                            value !== item.weightGrams
+                                          ) {
+                                            patchItem(item.id, {
+                                              weightGrams: value,
+                                            });
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                    <label className="block space-y-1">
+                                      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                                        Price (USD)
+                                      </span>
+                                      <input
+                                        className="field field-sm"
+                                        type="number"
+                                        min={0}
+                                        defaultValue={item.priceUsd}
+                                        key={`price-${item.id}-${item.priceUsd}`}
+                                        onBlur={(e) => {
+                                          const value = Number(e.target.value);
+                                          if (
+                                            Number.isFinite(value) &&
+                                            value !== item.priceUsd
+                                          ) {
+                                            patchItem(item.id, {
+                                              priceUsd: value,
+                                            });
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                    <label className="block space-y-1">
+                                      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                                        Qty
+                                      </span>
+                                      <input
+                                        className="field field-sm"
+                                        type="number"
+                                        min={0}
+                                        max={99}
+                                        defaultValue={item.quantity}
+                                        key={`qty-${item.id}-${item.quantity}`}
+                                        onBlur={(e) => {
+                                          const value = Number(e.target.value);
+                                          if (
+                                            Number.isFinite(value) &&
+                                            value !== item.quantity
+                                          ) {
+                                            patchItem(item.id, {
+                                              quantity: value,
+                                            });
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                  </div>
+                                  {item.lockerItemId ? (
+                                    <p className="text-[11px] text-ink-soft">
+                                      Linked to inventory — edits update the
+                                      locker too.
+                                    </p>
+                                  ) : (
+                                    <p className="text-[11px] text-ink-soft">
+                                      Pack-only item (not in inventory).
+                                    </p>
+                                  )}
+                                  <div className="flex flex-wrap gap-1.5">
                                     <button
                                       type="button"
-                                      className="chip"
+                                      className="chip !px-2.5 !py-1 !text-xs"
                                       data-active={item.worn}
                                       onClick={() =>
                                         patchItem(item.id, {
@@ -790,7 +903,7 @@ export function TripDetailClient({
                                     </button>
                                     <button
                                       type="button"
-                                      className="chip"
+                                      className="chip !px-2.5 !py-1 !text-xs"
                                       data-active={item.consumable}
                                       onClick={() =>
                                         patchItem(item.id, {
@@ -802,7 +915,7 @@ export function TripDetailClient({
                                     </button>
                                     <button
                                       type="button"
-                                      className="chip"
+                                      className="chip !px-2.5 !py-1 !text-xs"
                                       data-active={item.maybe}
                                       onClick={() =>
                                         patchItem(item.id, {
@@ -815,10 +928,10 @@ export function TripDetailClient({
                                     </button>
                                     <button
                                       type="button"
-                                      className="chip text-[var(--signal-fail)]"
+                                      className="chip !px-2.5 !py-1 !text-xs text-[var(--signal-fail)]"
                                       onClick={() => removeItem(item.id)}
                                     >
-                                      <Trash2 size={14} className="mr-1" />
+                                      <Trash2 size={12} className="mr-1" />
                                       Remove
                                     </button>
                                   </div>

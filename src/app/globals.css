@@ -402,6 +402,25 @@ textarea {
   background: #ffffff;
 }
 
+.field-sm {
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.7rem;
+  font-size: 0.875rem;
+}
+
+.field-category {
+  background: #d8e0d6;
+  border-color: rgba(16, 32, 24, 0.22);
+  color: #1a2a20;
+  font-weight: 560;
+}
+
+.field-category:focus {
+  background: #cfd8cc;
+  border-color: rgba(47, 90, 61, 0.55);
+  box-shadow: 0 0 0 3px rgba(47, 90, 61, 0.14);
+}
+
 textarea.field {
   min-height: 5.5rem;
   resize: vertical;
