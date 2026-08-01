@@ -11,6 +11,7 @@ import {
   Download,
   Eraser,
   Megaphone,
+  Palette,
   Plus,
   Share2,
   Trash2,
@@ -28,10 +29,15 @@ import {
 } from "@/lib/pack-stats";
 import {
   CATEGORIES,
+  CATEGORY_COLOR_SWATCHES,
   CATEGORY_LABELS,
+  contrastOnColor,
+  DEFAULT_CATEGORY_COLORS,
   formatUsd,
   type Category,
 } from "@/lib/units";
+
+const CATEGORY_COLORS_KEY = "bw-category-colors";
 
 type Detail = {
   trip: Trip;
@@ -71,6 +77,10 @@ export function TripDetailClient({
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>(
     {},
   );
+  const [categoryColors, setCategoryColors] = useState<
+    Record<Category, string>
+  >(DEFAULT_CATEGORY_COLORS);
+  const [colorPickerCat, setColorPickerCat] = useState<Category | null>(null);
   const [newItem, setNewItem] = useState({
     name: "",
     brand: "",
@@ -86,7 +96,43 @@ export function TripDetailClient({
   useEffect(() => {
     const saved = window.localStorage.getItem("bw-author");
     if (saved) setAuthorName(saved);
+    try {
+      const raw = window.localStorage.getItem(CATEGORY_COLORS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<Record<Category, string>>;
+      setCategoryColors((prev) => {
+        const next = { ...prev };
+        for (const cat of CATEGORIES) {
+          const value = parsed[cat];
+          if (typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value)) {
+            next[cat] = value;
+          }
+        }
+        return next;
+      });
+    } catch {
+      /* ignore bad localStorage */
+    }
   }, []);
+
+  useEffect(() => {
+    if (!colorPickerCat) return;
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-category-color-picker]")) return;
+      setColorPickerCat(null);
+    }
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [colorPickerCat]);
+
+  function setCategoryColor(category: Category, color: string) {
+    setCategoryColors((prev) => {
+      const next = { ...prev, [category]: color };
+      window.localStorage.setItem(CATEGORY_COLORS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
 
   const inTripLockerIds = useMemo(
     () => new Set(detail.items.map((i) => i.lockerItemId).filter(Boolean)),
@@ -840,46 +886,140 @@ export function TripDetailClient({
               inventory.
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {groupedItems.map(([category, list]) => {
                 const isCollapsed = collapsedCats[category];
                 const grams = list.reduce(
                   (sum, i) => sum + i.weightGrams * i.quantity,
                   0,
                 );
+                const headerColor =
+                  categoryColors[category] ?? DEFAULT_CATEGORY_COLORS[category];
+                const headerInk = contrastOnColor(headerColor);
+                const pickerOpen = colorPickerCat === category;
                 return (
                   <div
                     key={category}
-                    className="overflow-hidden rounded-xl border border-black/10 bg-white/90"
+                    className="category-tile flex min-h-[220px] flex-col overflow-hidden"
                   >
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
-                      onClick={() =>
-                        setCollapsedCats((prev) => ({
-                          ...prev,
-                          [category]: !prev[category],
-                        }))
-                      }
+                    <div
+                      className="relative flex items-start justify-between gap-2 px-3.5 py-3"
+                      style={{ background: headerColor, color: headerInk }}
                     >
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold leading-tight">
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 text-left"
+                        onClick={() =>
+                          setCollapsedCats((prev) => ({
+                            ...prev,
+                            [category]: !prev[category],
+                          }))
+                        }
+                      >
+                        <div className="text-[15px] font-semibold leading-tight tracking-tight">
                           {CATEGORY_LABELS[category]}
                         </div>
-                        <div className="text-xs text-ink-soft">
-                          {list.length} · <Weight grams={grams} />
+                        <div
+                          className="mt-0.5 text-xs tabular-nums"
+                          style={{ opacity: 0.85 }}
+                        >
+                          {list.length} item{list.length === 1 ? "" : "s"} ·{" "}
+                          <Weight grams={grams} />
                         </div>
+                      </button>
+                      <div
+                        className="relative flex shrink-0 items-center gap-1"
+                        data-category-color-picker
+                      >
+                        <button
+                          type="button"
+                          className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/15"
+                          style={{ color: headerInk }}
+                          aria-label={`Change ${CATEGORY_LABELS[category]} color`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setColorPickerCat((prev) =>
+                              prev === category ? null : category,
+                            );
+                          }}
+                        >
+                          <Palette size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/15"
+                          style={{ color: headerInk }}
+                          aria-label={
+                            isCollapsed ? "Expand category" : "Collapse category"
+                          }
+                          onClick={() =>
+                            setCollapsedCats((prev) => ({
+                              ...prev,
+                              [category]: !prev[category],
+                            }))
+                          }
+                        >
+                          <ChevronDown
+                            size={16}
+                            className={`transition ${
+                              isCollapsed ? "-rotate-90" : ""
+                            }`}
+                          />
+                        </button>
+                        {pickerOpen && (
+                          <div
+                            className="absolute right-0 top-full z-20 mt-2 w-[188px] rounded-xl border border-black/10 bg-white p-2.5 shadow-lg"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                              Header color
+                            </div>
+                            <div className="grid grid-cols-4 gap-1.5">
+                              {CATEGORY_COLOR_SWATCHES.map((swatch) => (
+                                <button
+                                  key={swatch}
+                                  type="button"
+                                  className="h-8 w-full rounded-md border border-black/10 transition hover:scale-105"
+                                  style={{ background: swatch }}
+                                  aria-label={`Set color ${swatch}`}
+                                  onClick={() => {
+                                    setCategoryColor(category, swatch);
+                                    setColorPickerCat(null);
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            <label className="mt-2 flex items-center gap-2 text-xs text-ink-soft">
+                              <span>Custom</span>
+                              <input
+                                type="color"
+                                value={headerColor}
+                                className="h-8 w-full cursor-pointer rounded border border-black/10 bg-transparent"
+                                onChange={(e) =>
+                                  setCategoryColor(category, e.target.value)
+                                }
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              className="mt-2 w-full text-left text-xs text-ink-soft hover:text-ink"
+                              onClick={() => {
+                                setCategoryColor(
+                                  category,
+                                  DEFAULT_CATEGORY_COLORS[category],
+                                );
+                                setColorPickerCat(null);
+                              }}
+                            >
+                              Reset default
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <ChevronDown
-                        size={16}
-                        className={`shrink-0 text-ink-soft transition ${
-                          isCollapsed ? "-rotate-90" : ""
-                        }`}
-                      />
-                    </button>
+                    </div>
 
                     {!isCollapsed && (
-                      <div className="divide-y divide-black/8 border-t border-black/8">
+                      <div className="flex flex-1 flex-col divide-y divide-black/8 bg-[rgba(255,255,255,0.82)]">
                         {list.map((item) => {
                           const open = openId === item.id;
                           return (
@@ -891,6 +1031,11 @@ export function TripDetailClient({
                                   setOpenId(open ? null : item.id)
                                 }
                               >
+                                <div
+                                  className="mt-0.5 h-8 w-1 shrink-0 rounded-full"
+                                  style={{ background: headerColor }}
+                                  aria-hidden
+                                />
                                 <div className="min-w-0 flex-1">
                                   <div className="truncate text-sm font-medium leading-tight">
                                     {item.name}
@@ -920,7 +1065,7 @@ export function TripDetailClient({
                                 </span>
                               </button>
                               {open && (
-                                <div className="mt-2 space-y-2 rounded-xl bg-[#e8eee6] p-3">
+                                <div className="mt-2 space-y-2 rounded-xl bg-[#e8eee6]/90 p-3">
                                   <label className="block space-y-1">
                                     <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
                                       Category
@@ -1110,6 +1255,20 @@ export function TripDetailClient({
                           );
                         })}
                       </div>
+                    )}
+                    {isCollapsed && (
+                      <button
+                        type="button"
+                        className="flex flex-1 items-center justify-center bg-[rgba(255,255,255,0.7)] px-3 py-6 text-sm text-ink-soft"
+                        onClick={() =>
+                          setCollapsedCats((prev) => ({
+                            ...prev,
+                            [category]: false,
+                          }))
+                        }
+                      >
+                        Expand items
+                      </button>
                     )}
                   </div>
                 );
