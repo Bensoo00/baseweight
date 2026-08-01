@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowUpRight,
   Check,
   ChevronDown,
   Copy,
+  Download,
+  Eraser,
   Megaphone,
   Plus,
   Share2,
@@ -48,6 +51,7 @@ export function TripDetailClient({
   locker: LockerItem[];
   trails: Trail[];
 }) {
+  const router = useRouter();
   const { unit, format } = useUnit();
   const [detail, setDetail] = useState(initial);
   const [pending, startTransition] = useTransition();
@@ -294,6 +298,62 @@ export function TripDetailClient({
     });
   }
 
+  function exportCsv() {
+    window.open(
+      `/api/trips/${detail.trip.id}/export`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }
+
+  function duplicatePack() {
+    startTransition(async () => {
+      await writeQueue.current;
+      const res = await fetch(`/api/trips/${detail.trip.id}/duplicate`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.trip?.trip?.id) {
+        router.push(`/trips/${data.trip.trip.id}`);
+      }
+    });
+  }
+
+  function clearPack() {
+    if (
+      !window.confirm(
+        "Remove every item from this pack? Gear stays in your inventory.",
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const res = await fetch(
+        `/api/trips/${detail.trip.id}/items?clearAll=1`,
+        { method: "DELETE" },
+      );
+      const data = await res.json();
+      if (data.items && data.stats) applyItemsStats(data.items, data.stats);
+    });
+  }
+
+  function deletePack() {
+    if (
+      !window.confirm(
+        `Delete “${detail.trip.name}”? Items stay in your gear inventory.`,
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      await writeQueue.current;
+      const res = await fetch(`/api/trips/${detail.trip.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) router.push("/#packs");
+    });
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -323,6 +383,19 @@ export function TripDetailClient({
             {copied ? <Check size={16} /> : <Share2 size={16} />}
             {copied ? "Copied link" : shareReady ? "Share link" : "Saving…"}
           </button>
+          <button type="button" className="pill pill-soft" onClick={exportCsv}>
+            <Download size={16} />
+            Export CSV
+          </button>
+          <button
+            type="button"
+            className="pill pill-soft"
+            onClick={duplicatePack}
+            disabled={pending}
+          >
+            <Copy size={16} />
+            Duplicate
+          </button>
           <button
             type="button"
             className="pill pill-soft"
@@ -343,6 +416,24 @@ export function TripDetailClient({
               <ArrowUpRight size={14} />
             </span>
             {shareReady ? "Public view" : "Saving…"}
+          </button>
+          <button
+            type="button"
+            className="pill pill-soft"
+            onClick={clearPack}
+            disabled={pending || detail.items.length === 0}
+          >
+            <Eraser size={16} />
+            Clear items
+          </button>
+          <button
+            type="button"
+            className="pill pill-soft text-[var(--signal-fail)]"
+            onClick={deletePack}
+            disabled={pending}
+          >
+            <Trash2 size={16} />
+            Delete pack
           </button>
         </div>
       </div>

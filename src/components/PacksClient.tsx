@@ -353,62 +353,113 @@ export function PacksClient({
         {packs.map((pack, index) => {
           const isTrip = Boolean(pack.trail) || pack.nights > 0;
           return (
-            <Link
+            <div
               key={pack.id}
-              href={`/trips/${pack.id}`}
-              className={`glass-card group flex flex-col gap-4 p-5 transition hover:-translate-y-0.5 md:flex-row md:items-center md:justify-between animate-rise animate-rise-delay-${(index % 3) + 1}`}
+              className={`glass-card flex flex-col gap-4 p-5 transition hover:-translate-y-0.5 animate-rise animate-rise-delay-${(index % 3) + 1}`}
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-ink-soft">
-                  <span className="rounded-full bg-white/35 px-2.5 py-0.5">
-                    Pack
-                  </span>
-                  {isTrip && (
-                    <span className="rounded-full bg-[rgba(125,207,74,0.25)] px-2.5 py-0.5 text-[var(--lichen-ink)]">
-                      Trip assigned
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <Link
+                  href={`/trips/${pack.id}`}
+                  className="min-w-0 flex-1 group"
+                >
+                  <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-ink-soft">
+                    <span className="rounded-full bg-white/45 px-2.5 py-0.5">
+                      Pack
                     </span>
+                    {isTrip && (
+                      <span className="rounded-full bg-[rgba(125,207,74,0.28)] px-2.5 py-0.5 text-[var(--lichen-ink)]">
+                        Trip assigned
+                      </span>
+                    )}
+                    <span>
+                      {pack.trail?.name ??
+                        (isTrip ? "Custom route" : "No trip yet")}
+                      {pack.nights > 0
+                        ? ` · ${pack.nights} night${pack.nights === 1 ? "" : "s"}`
+                        : ""}
+                    </span>
+                  </div>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight group-hover:underline decoration-ink/30 underline-offset-4">
+                    {pack.name}
+                  </h2>
+                  <div className="mt-1 text-xs text-ink-soft md:hidden">
+                    Kit {formatUsd(pack.stats.totalValueUsd)}
+                  </div>
+                </Link>
+                <div className="grid grid-cols-3 gap-4 text-sm md:w-[280px]">
+                  <div>
+                    <div className="text-ink-soft">Base</div>
+                    <div className="mt-0.5 font-semibold">
+                      <Weight grams={pack.stats.baseWeightGrams} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-ink-soft">Items</div>
+                    <div className="mt-0.5 font-semibold">
+                      {pack.stats.itemCount}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-ink-soft">Checks</div>
+                    <div className="mt-0.5 font-semibold">
+                      {pack.failCount === 0 && pack.warnCount === 0
+                        ? "Clear"
+                        : `${pack.failCount}F / ${pack.warnCount}W`}
+                    </div>
+                  </div>
+                </div>
+                <Link
+                  href={`/trips/${pack.id}`}
+                  className="hidden h-9 w-9 shrink-0 place-items-center rounded-full bg-white/45 transition hover:bg-ink hover:text-white md:grid"
+                  aria-label={`Open ${pack.name}`}
+                >
+                  <ArrowRight size={16} />
+                </Link>
+              </div>
+              <div className="glass-divider" />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="pill pill-soft !py-2 !px-3 text-sm"
+                  onClick={() => void copyShareLink(pack)}
+                  disabled={pending}
+                >
+                  {copiedId === pack.id ? (
+                    <Check size={14} />
+                  ) : (
+                    <Share2 size={14} />
                   )}
-                  <span>
-                    {pack.trail?.name ??
-                      (isTrip ? "Custom route" : "No trip yet")}
-                    {pack.nights > 0
-                      ? ` · ${pack.nights} night${pack.nights === 1 ? "" : "s"}`
-                      : ""}
-                  </span>
-                </div>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight">
-                  {pack.name}
-                </h2>
+                  {copiedId === pack.id ? "Copied" : "Share"}
+                </button>
+                <button
+                  type="button"
+                  className="pill pill-soft !py-2 !px-3 text-sm"
+                  onClick={() => duplicatePack(pack.id)}
+                  disabled={pending}
+                >
+                  <Copy size={14} />
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  className="pill pill-soft !py-2 !px-3 text-sm"
+                  onClick={() => exportCsv(pack)}
+                  disabled={pending}
+                >
+                  <Download size={14} />
+                  Export CSV
+                </button>
+                <button
+                  type="button"
+                  className="pill pill-soft !py-2 !px-3 text-sm text-[var(--signal-fail)]"
+                  onClick={() => deletePack(pack)}
+                  disabled={pending}
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </button>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-sm md:w-[280px]">
-                <div>
-                  <div className="text-ink-soft">Base</div>
-                  <div className="mt-0.5 font-semibold">
-                    <Weight grams={pack.stats.baseWeightGrams} />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-ink-soft">Items</div>
-                  <div className="mt-0.5 font-semibold">
-                    {pack.stats.itemCount}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-ink-soft">Checks</div>
-                  <div className="mt-0.5 font-semibold">
-                    {pack.failCount === 0 && pack.warnCount === 0
-                      ? "Clear"
-                      : `${pack.failCount}F / ${pack.warnCount}W`}
-                  </div>
-                </div>
-              </div>
-              <span className="hidden h-9 w-9 shrink-0 place-items-center rounded-full bg-white/35 transition group-hover:bg-ink group-hover:text-white md:grid">
-                <ArrowRight size={16} />
-              </span>
-              <div className="text-xs text-ink-soft md:hidden">
-                Kit {formatUsd(pack.stats.totalValueUsd)}
-              </div>
-            </Link>
+            </div>
           );
         })}
         {packs.length === 0 && (
