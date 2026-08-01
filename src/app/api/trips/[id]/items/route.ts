@@ -9,6 +9,7 @@ import {
   addCustomItemToTrip,
   addLockerItemsToTrip,
   assertTripOwned,
+  clearTripItems,
   getTripItem,
   getTripItemsWithStats,
 } from "@/lib/trips";
@@ -208,7 +209,17 @@ export async function DELETE(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const itemId = Number(new URL(request.url).searchParams.get("itemId"));
+  const url = new URL(request.url);
+  if (url.searchParams.get("clearAll") === "1") {
+    const light = await clearTripItems(tripId, user.id);
+    if (!light) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    await syncCommunityPostForTrip(tripId, light.stats);
+    return NextResponse.json(light);
+  }
+
+  const itemId = Number(url.searchParams.get("itemId"));
   if (!itemId) {
     return NextResponse.json({ error: "Missing itemId" }, { status: 400 });
   }

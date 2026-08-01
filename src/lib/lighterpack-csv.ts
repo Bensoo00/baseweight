@@ -1,3 +1,4 @@
+import type { TripItem } from "@/db/schema";
 import { CATEGORIES, type Category } from "@/lib/units";
 
 export type ParsedPackItem = {
@@ -218,4 +219,39 @@ export function parseLighterpackCsv(text: string): {
   });
 
   return { items, warnings };
+}
+
+function csvEscape(value: string | number | boolean): string {
+  const s = String(value ?? "");
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+/** Export pack items in a LighterPack-compatible CSV shape. */
+export function toLighterpackCsv(items: TripItem[]): string {
+  const header = [
+    "Item Name",
+    "Category",
+    "desc",
+    "qty",
+    "weight",
+    "unit",
+    "price",
+    "worn",
+    "consumable",
+    "url",
+  ];
+  const rows = items.map((item) => [
+    csvEscape(item.name),
+    csvEscape(item.category),
+    csvEscape([item.brand, item.notes].filter(Boolean).join(" · ")),
+    csvEscape(item.quantity),
+    csvEscape(item.weightGrams),
+    "gram",
+    csvEscape(item.priceUsd),
+    csvEscape(item.worn ? "worn" : ""),
+    csvEscape(item.consumable ? "consumable" : ""),
+    "",
+  ]);
+  return [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
 }

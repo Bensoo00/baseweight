@@ -216,6 +216,59 @@ export async function deleteTrip(id: number, userId: number) {
   return true;
 }
 
+/** Copy a pack you own (items stay linked to the same locker rows when present). */
+export async function duplicateTrip(id: number, userId: number) {
+  const source = await getOwnedTripDetail(id, userId);
+  if (!source) return null;
+  const now = new Date().toISOString();
+  const [trip] = await db
+    .insert(trips)
+    .values({
+      userId,
+      name: `${source.trip.name} (copy)`,
+      trailId: source.trip.trailId,
+      nights: source.trip.nights,
+      season: source.trip.season,
+      targetBaseWeightGrams: source.trip.targetBaseWeightGrams,
+      shareSlug: shareSlug(),
+      notes: source.trip.notes,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  if (source.items.length) {
+    await db.insert(tripItems).values(
+      source.items.map((item) => ({
+        tripId: trip.id,
+        lockerItemId: item.lockerItemId,
+        name: item.name,
+        brand: item.brand,
+        category: item.category,
+        weightGrams: item.weightGrams,
+        priceUsd: item.priceUsd,
+        quantity: item.quantity,
+        worn: item.worn,
+        consumable: item.consumable,
+        maybe: item.maybe,
+        notes: item.notes,
+      })),
+    );
+  }
+
+  return getTripDetail(trip.id);
+}
+
+export async function clearTripItems(id: number, userId: number) {
+  if (!(await assertTripOwned(id, userId))) return null;
+  await db.delete(tripItems).where(eq(tripItems.tripId, id));
+  await db
+    .update(trips)
+    .set({ updatedAt: new Date().toISOString() })
+    .where(and(eq(trips.id, id), eq(trips.userId, userId)));
+  return getTripItemsWithStats(id);
+}
+
 export async function addLockerItemsToTrip(
   tripId: number,
   items: LockerItem[],

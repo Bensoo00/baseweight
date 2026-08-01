@@ -3,7 +3,16 @@
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, FileUp, Plus } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Copy,
+  Download,
+  FileUp,
+  Plus,
+  Share2,
+  Trash2,
+} from "lucide-react";
 import type { Trail } from "@/db/schema";
 import { LOCKER_UPDATED_EVENT } from "@/components/AddGearForm";
 import { Weight } from "@/components/UnitProvider";
@@ -42,6 +51,7 @@ export function PacksClient({
   const [importError, setImportError] = useState<string | null>(null);
   const [importName, setImportName] = useState("");
   const [alsoLocker, setAlsoLocker] = useState(true);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const [form, setForm] = useState({
     name: "",
     trailId: "",
@@ -54,6 +64,42 @@ export function PacksClient({
     const res = await fetch("/api/trips");
     const data = await res.json();
     setPacks(data.trips ?? []);
+  }
+
+  function duplicatePack(id: number) {
+    startTransition(async () => {
+      const res = await fetch(`/api/trips/${id}/duplicate`, { method: "POST" });
+      const data = await res.json();
+      await refresh();
+      if (data.trip?.trip?.id) {
+        router.push(`/trips/${data.trip.trip.id}`);
+      }
+    });
+  }
+
+  function deletePack(pack: PackRow) {
+    if (
+      !window.confirm(
+        `Delete “${pack.name}”? Items stay in your gear inventory.`,
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      await fetch(`/api/trips/${pack.id}`, { method: "DELETE" });
+      setPacks((prev) => prev.filter((p) => p.id !== pack.id));
+    });
+  }
+
+  async function copyShareLink(pack: PackRow) {
+    const url = `${window.location.origin}/s/${pack.shareSlug}`;
+    await navigator.clipboard.writeText(url);
+    setCopiedId(pack.id);
+    setTimeout(() => setCopiedId(null), 1600);
+  }
+
+  function exportCsv(pack: PackRow) {
+    window.open(`/api/trips/${pack.id}/export`, "_blank", "noopener,noreferrer");
   }
 
   function createPack() {
