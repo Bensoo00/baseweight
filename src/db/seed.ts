@@ -1,5 +1,5 @@
 import { count, eq } from "drizzle-orm";
-import { db } from "./index";
+import { db, ensureSchema } from "./index";
 import {
   catalogItems,
   communityComments,
@@ -508,6 +508,7 @@ const starterLocker = [
 ];
 
 export async function seedIfEmpty() {
+  await ensureSchema();
   const [{ value: trailCount }] = await db.select({ value: count() }).from(trails);
   if (trailCount === 0) {
     await db.insert(trails).values(trailSeed);

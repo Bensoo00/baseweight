@@ -47,13 +47,13 @@ Vercel deploys from GitHub. Commit your latest code and push to `origin/main`.
    - `DATABASE_URL` = Render **External** Postgres URL
 4. Deploy.
 
-The build script runs:
+Tables and seed data are created automatically on the first request (`ensureSchema` + `seedIfEmpty`). You do not need `drizzle-kit` during the Vercel build.
+
+Optional local setup against Render:
 
 ```bash
-drizzle-kit push --force && tsx src/scripts/seed-cli.ts && next build
+npm run db:setup
 ```
-
-so tables + seed data are created on first deploy.
 
 ### 4) Custom domain (optional)
 

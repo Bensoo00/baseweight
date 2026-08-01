@@ -6,18 +6,26 @@ for (const path of [".env.local", ".env"]) {
   if (existsSync(path)) config({ path, override: false });
 }
 
-if (!process.env.DATABASE_URL) {
+const url = process.env.DATABASE_URL;
+if (!url) {
   throw new Error("DATABASE_URL is required for drizzle-kit");
 }
+
+const normalized =
+  url.includes("render.com") && !url.includes("sslmode=")
+    ? `${url}${url.includes("?") ? "&" : "?"}sslmode=require`
+    : url;
 
 export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: normalized,
     ssl:
-      process.env.DATABASE_URL.includes("render.com") ||
+      normalized.includes("render.com") ||
+      normalized.includes("sslmode=require") ||
       process.env.PGSSL === "true",
   },
 });
+

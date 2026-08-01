@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "drizzle-kit push --force && tsx src/scripts/seed-cli.ts && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/scripts/seed-cli.ts",
-    "db:setup": "drizzle-kit push --force && tsx src/scripts/seed-cli.ts"
+    "db:setup": "tsx src/scripts/seed-cli.ts"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
