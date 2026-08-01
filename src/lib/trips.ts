@@ -34,6 +34,48 @@ async function getTrail(trailId: number | null) {
   return rows[0] ?? null;
 }
 
+const catalogCache = globalThis as unknown as {
+  __bwCatalog?: { at: number; rows: (typeof catalogItems.$inferSelect)[] };
+};
+
+async function getCatalogCached() {
+  const hit = catalogCache.__bwCatalog;
+  if (hit && Date.now() - hit.at < 5 * 60_000) return hit.rows;
+  const rows = await db.select().from(catalogItems);
+  catalogCache.__bwCatalog = { at: Date.now(), rows };
+  return rows;
+}
+
+/** Fast ownership check — no items / gap-check work. */
+export async function assertTripOwned(tripId: number, userId: number) {
+  const rows = await db
+    .select({ id: trips.id })
+    .from(trips)
+    .where(and(eq(trips.id, tripId), eq(trips.userId, userId)))
+    .limit(1);
+  return Boolean(rows[0]);
+}
+
+export async function getTripItem(tripId: number, itemId: number) {
+  const rows = await db
+    .select()
+    .from(tripItems)
+    .where(and(eq(tripItems.id, itemId), eq(tripItems.tripId, tripId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Lightweight pack refresh after mutations (skips gap checks / catalog). */
+export async function getTripItemsWithStats(tripId: number) {
+  const items = await db
+    .select()
+    .from(tripItems)
+    .where(eq(tripItems.tripId, tripId))
+    .orderBy(asc(tripItems.category), asc(tripItems.name));
+  const stats = computePackStats(tripItemsToPackable(items));
+  return { items, stats };
+}
+
 export async function listTrips(userId: number) {
   return db
     .select()
@@ -75,16 +117,19 @@ export async function getTripBySlug(slug: string): Promise<TripDetail | null> {
 }
 
 async function hydrateTrip(trip: Trip): Promise<TripDetail> {
-  const items = await db
-    .select()
-    .from(tripItems)
-    .where(eq(tripItems.tripId, trip.id))
-    .orderBy(asc(tripItems.category), asc(tripItems.name));
-  const trail = await getTrail(trip.trailId);
-  const catalog = await db.select().from(catalogItems);
-  const stats = computePackStats(tripItemsToPackable(items));
+  const [items, trail, catalog] = await Promise.all([
+    db
+      .select()
+      .from(tripItems)
+      .where(eq(tripItems.tripId, trip.id))
+      .orderBy(asc(tripItems.category), asc(tripItems.name)),
+    getTrail(trip.trailId),
+    getCatalogCached(),
+  ]);
+  const packable = tripItemsToPackable(items);
+  const stats = computePackStats(packable);
   const { checks, upgrades } = runGapChecks({
-    gear: tripItemsToPackable(items),
+    gear: packable,
     trail,
     nights: trip.nights,
     season: trip.season,
@@ -213,8 +258,7 @@ export async function addCustomItemToTrip(
     alsoAddToLocker?: boolean;
   },
 ) {
-  const owned = await getOwnedTripDetail(tripId, userId);
-  if (!owned) return null;
+  if (!(await assertTripOwned(tripId, userId))) return null;
 
   let lockerItemId: number | null = null;
   if (input.alsoAddToLocker) {
@@ -255,7 +299,7 @@ export async function addCustomItemToTrip(
     .set({ updatedAt: new Date().toISOString() })
     .where(eq(trips.id, tripId));
 
-  return getTripDetail(tripId);
+  return getTripItemsWithStats(tripId);
 }
 
 export async function addCatalogToLockerAndTrip(options: {

@@ -62,13 +62,15 @@ export function LockerClient({
   }
 
   async function moveCategory(id: number, category: Category) {
-    await fetch("/api/locker", {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, category } : item)),
+    );
+    setEditingId(null);
+    void fetch("/api/locker", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, category }),
-    });
-    setEditingId(null);
-    await refresh();
+    }).then(() => refresh());
   }
 
   return (

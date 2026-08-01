@@ -1,14 +1,15 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/db";
+import { db, ensureSchema } from "@/db";
 import { lockerItems, tripItems, trips } from "@/db/schema";
-import { seedIfEmpty } from "@/db/seed";
 import { requireUser } from "@/lib/auth";
 import {
   addCustomItemToTrip,
   addLockerItemsToTrip,
-  getOwnedTripDetail,
+  assertTripOwned,
+  getTripItem,
+  getTripItemsWithStats,
 } from "@/lib/trips";
 import { CATEGORIES } from "@/lib/units";
 
@@ -49,21 +50,24 @@ const patchSchema = z.object({
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, { params }: Params) {
-  await seedIfEmpty();
+  await ensureSchema();
   const { user, error } = await requireUser();
   if (error) return error;
 
   const tripId = Number((await params).id);
-  const owned = await getOwnedTripDetail(tripId, user.id);
-  if (!owned) {
+  if (!(await assertTripOwned(tripId, user.id))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const body = await request.json();
   const custom = customItemSchema.safeParse(body);
   if (custom.success) {
-    const detail = await addCustomItemToTrip(user.id, tripId, custom.data.item);
-    return NextResponse.json(detail, { status: 201 });
+    await addCustomItemToTrip(user.id, tripId, custom.data.item);
+    const light = await getTripItemsWithStats(tripId);
+    return NextResponse.json(
+      { ...light, lockerSynced: Boolean(custom.data.item.alsoAddToLocker) },
+      { status: 201 },
+    );
   }
 
   const fromLocker = fromLockerSchema.safeParse(body);
@@ -85,17 +89,16 @@ export async function POST(request: Request, { params }: Params) {
     );
 
   await addLockerItemsToTrip(tripId, items);
-  return NextResponse.json(await getOwnedTripDetail(tripId, user.id));
+  return NextResponse.json(await getTripItemsWithStats(tripId));
 }
 
 export async function PATCH(request: Request, { params }: Params) {
-  await seedIfEmpty();
+  await ensureSchema();
   const { user, error } = await requireUser();
   if (error) return error;
 
   const tripId = Number((await params).id);
-  const owned = await getOwnedTripDetail(tripId, user.id);
-  if (!owned) {
+  if (!(await assertTripOwned(tripId, user.id))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -104,7 +107,7 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const existing = owned.items.find((i) => i.id === parsed.data.id);
+  const existing = await getTripItem(tripId, parsed.data.id);
   if (!existing) {
     return NextResponse.json({ error: "Item not found" }, { status: 404 });
   }
@@ -129,12 +132,18 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   if (parsed.data.category) updates.category = parsed.data.category;
 
-  await db
-    .update(tripItems)
-    .set(updates)
-    .where(
-      and(eq(tripItems.id, parsed.data.id), eq(tripItems.tripId, tripId)),
-    );
+  const writeJobs: Promise<unknown>[] = [
+    db
+      .update(tripItems)
+      .set(updates)
+      .where(
+        and(eq(tripItems.id, parsed.data.id), eq(tripItems.tripId, tripId)),
+      ),
+    db
+      .update(trips)
+      .set({ updatedAt: new Date().toISOString() })
+      .where(and(eq(trips.id, tripId), eq(trips.userId, user.id))),
+  ];
 
   let lockerSynced = false;
   if (
@@ -164,36 +173,33 @@ export async function PATCH(request: Request, { params }: Params) {
     }
 
     if (Object.keys(lockerUpdates).length) {
-      await db
-        .update(lockerItems)
-        .set(lockerUpdates)
-        .where(
-          and(
-            eq(lockerItems.id, existing.lockerItemId),
-            eq(lockerItems.userId, user.id),
+      writeJobs.push(
+        db
+          .update(lockerItems)
+          .set(lockerUpdates)
+          .where(
+            and(
+              eq(lockerItems.id, existing.lockerItemId),
+              eq(lockerItems.userId, user.id),
+            ),
           ),
-        );
+      );
       lockerSynced = true;
     }
   }
 
-  await db
-    .update(trips)
-    .set({ updatedAt: new Date().toISOString() })
-    .where(and(eq(trips.id, tripId), eq(trips.userId, user.id)));
-
-  const detail = await getOwnedTripDetail(tripId, user.id);
-  return NextResponse.json({ ...detail, lockerSynced });
+  await Promise.all(writeJobs);
+  const light = await getTripItemsWithStats(tripId);
+  return NextResponse.json({ ...light, lockerSynced });
 }
 
 export async function DELETE(request: Request, { params }: Params) {
-  await seedIfEmpty();
+  await ensureSchema();
   const { user, error } = await requireUser();
   if (error) return error;
 
   const tripId = Number((await params).id);
-  const owned = await getOwnedTripDetail(tripId, user.id);
-  if (!owned) {
+  if (!(await assertTripOwned(tripId, user.id))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -201,12 +207,14 @@ export async function DELETE(request: Request, { params }: Params) {
   if (!itemId) {
     return NextResponse.json({ error: "Missing itemId" }, { status: 400 });
   }
-  await db
-    .delete(tripItems)
-    .where(and(eq(tripItems.id, itemId), eq(tripItems.tripId, tripId)));
-  await db
-    .update(trips)
-    .set({ updatedAt: new Date().toISOString() })
-    .where(and(eq(trips.id, tripId), eq(trips.userId, user.id)));
-  return NextResponse.json(await getOwnedTripDetail(tripId, user.id));
+  await Promise.all([
+    db
+      .delete(tripItems)
+      .where(and(eq(tripItems.id, itemId), eq(tripItems.tripId, tripId))),
+    db
+      .update(trips)
+      .set({ updatedAt: new Date().toISOString() })
+      .where(and(eq(trips.id, tripId), eq(trips.userId, user.id))),
+  ]);
+  return NextResponse.json(await getTripItemsWithStats(tripId));
 }

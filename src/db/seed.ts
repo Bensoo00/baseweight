@@ -548,7 +548,22 @@ async function claimOrphanRows(userId: number) {
     .where(isNull(communityComments.userId));
 }
 
+const globalForSeed = globalThis as unknown as {
+  __baseweightSeedReady?: Promise<void>;
+};
+
+/** Runs seed at most once per server process — avoids multi-second DB work on every click. */
 export async function seedIfEmpty() {
+  if (!globalForSeed.__baseweightSeedReady) {
+    globalForSeed.__baseweightSeedReady = runSeedIfEmpty().catch((error) => {
+      globalForSeed.__baseweightSeedReady = undefined;
+      throw error;
+    });
+  }
+  await globalForSeed.__baseweightSeedReady;
+}
+
+async function runSeedIfEmpty() {
   await ensureSchema();
   const demo = await ensureDemoUser();
   await claimOrphanRows(demo.id);

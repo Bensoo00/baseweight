@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { seedIfEmpty } from "@/db/seed";
+import { ensureSchema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { deleteTrip, getOwnedTripDetail, updateTrip } from "@/lib/trips";
 
@@ -16,7 +16,7 @@ const patchSchema = z.object({
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
-  await seedIfEmpty();
+  await ensureSchema();
   const { user, error } = await requireUser();
   if (error) return error;
 
@@ -29,7 +29,7 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PATCH(request: Request, { params }: Params) {
-  await seedIfEmpty();
+  await ensureSchema();
   const { user, error } = await requireUser();
   if (error) return error;
 
@@ -46,7 +46,7 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-  await seedIfEmpty();
+  await ensureSchema();
   const { user, error } = await requireUser();
   if (error) return error;
 

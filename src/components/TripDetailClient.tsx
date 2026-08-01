@@ -14,11 +14,15 @@ import {
 } from "lucide-react";
 import type { LockerItem, Trail, Trip, TripItem } from "@/db/schema";
 import type { GapCheck, UpgradeSuggestion } from "@/lib/gap-checks";
-import type { PackStats } from "@/lib/pack-stats";
 import { LOCKER_UPDATED_EVENT } from "@/components/AddGearForm";
 import { CategoryBars } from "@/components/CategoryBars";
 import { GapPanel } from "@/components/GapPanel";
 import { Weight, useUnit } from "@/components/UnitProvider";
+import {
+  computePackStats,
+  tripItemsToPackable,
+  type PackStats,
+} from "@/lib/pack-stats";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
@@ -106,86 +110,112 @@ export function TripDetailClient({
     (detail.stats.baseWeightGrams / detail.trip.targetBaseWeightGrams) * 100,
   );
 
-  function applyDetail(data: Detail) {
-    setDetail(data);
-  }
-
-  function applyPatchResponse(data: Detail & { lockerSynced?: boolean }) {
-    const { lockerSynced, ...rest } = data;
-    applyDetail(rest as Detail);
+  function applyItemsStats(
+    items: TripItem[],
+    stats: PackStats,
+    lockerSynced?: boolean,
+  ) {
+    setDetail((prev) => ({ ...prev, items, stats }));
     if (lockerSynced) {
       window.dispatchEvent(new CustomEvent(LOCKER_UPDATED_EVENT));
     }
   }
 
+  function withLocalStats(items: TripItem[]) {
+    return {
+      items,
+      stats: computePackStats(tripItemsToPackable(items)),
+    };
+  }
+
   function saveTrip(patch: Record<string, unknown>) {
-    startTransition(async () => {
-      const res = await fetch(`/api/trips/${detail.trip.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      applyDetail(await res.json());
+    setDetail((prev) => ({
+      ...prev,
+      trip: { ...prev.trip, ...patch } as Trip,
+    }));
+    void fetch(`/api/trips/${detail.trip.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
     });
   }
 
   function addSelected() {
-    startTransition(async () => {
-      const res = await fetch(`/api/trips/${detail.trip.id}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lockerItemIds: selected }),
+    const picked = selected.slice();
+    setSelected([]);
+    setPickerOpen(false);
+    void fetch(`/api/trips/${detail.trip.id}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lockerItemIds: picked }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.items && data.stats) applyItemsStats(data.items, data.stats);
       });
-      applyDetail(await res.json());
-      setSelected([]);
-      setPickerOpen(false);
-    });
   }
 
   function addDirectItem() {
     if (!newItem.name.trim()) return;
-    startTransition(async () => {
-      const res = await fetch(`/api/trips/${detail.trip.id}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item: newItem }),
+    const payload = { ...newItem };
+    setAddOpen(false);
+    setNewItem((prev) => ({
+      ...prev,
+      name: "",
+      brand: "",
+      weightGrams: 100,
+      priceUsd: 0,
+    }));
+    void fetch(`/api/trips/${detail.trip.id}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item: payload }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.items && data.stats) {
+          applyItemsStats(data.items, data.stats, data.lockerSynced);
+        }
       });
-      if (!res.ok) return;
-      applyDetail(await res.json());
-      if (newItem.alsoAddToLocker) {
-        window.dispatchEvent(new CustomEvent(LOCKER_UPDATED_EVENT));
-      }
-      setNewItem((prev) => ({
-        ...prev,
-        name: "",
-        brand: "",
-        weightGrams: 100,
-        priceUsd: 0,
-      }));
-      setAddOpen(false);
-    });
   }
 
   function patchItem(id: number, patch: Record<string, unknown>) {
-    startTransition(async () => {
-      const res = await fetch(`/api/trips/${detail.trip.id}/items`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, ...patch }),
-      });
-      if (!res.ok) return;
-      applyPatchResponse(await res.json());
+    // Optimistic local update — UI responds immediately
+    setDetail((prev) => {
+      const items = prev.items.map((item) =>
+        item.id === id ? ({ ...item, ...patch } as TripItem) : item,
+      );
+      const { stats } = withLocalStats(items);
+      return { ...prev, items, stats };
     });
+
+    void fetch(`/api/trips/${detail.trip.id}/items`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.items && data.stats) {
+          applyItemsStats(data.items, data.stats, data.lockerSynced);
+        }
+      });
   }
 
   function removeItem(itemId: number) {
-    startTransition(async () => {
-      const res = await fetch(
-        `/api/trips/${detail.trip.id}/items?itemId=${itemId}`,
-        { method: "DELETE" },
-      );
-      applyDetail(await res.json());
+    setDetail((prev) => {
+      const items = prev.items.filter((item) => item.id !== itemId);
+      const { stats } = withLocalStats(items);
+      return { ...prev, items, stats };
     });
+    setOpenId(null);
+    void fetch(`/api/trips/${detail.trip.id}/items?itemId=${itemId}`, {
+      method: "DELETE",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.items && data.stats) applyItemsStats(data.items, data.stats);
+      });
   }
 
   async function copyShare() {

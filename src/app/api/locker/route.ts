@@ -1,9 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/db";
+import { db, ensureSchema } from "@/db";
 import { lockerItems } from "@/db/schema";
-import { seedIfEmpty } from "@/db/seed";
 import { requireUser } from "@/lib/auth";
 import { CATEGORIES } from "@/lib/units";
 
@@ -21,7 +20,7 @@ const lockerSchema = z.object({
 });
 
 export async function GET() {
-  await seedIfEmpty();
+  await ensureSchema();
   const { user, error } = await requireUser();
   if (error) return error;
 
@@ -49,7 +48,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  await seedIfEmpty();
+  await ensureSchema();
   const { user, error } = await requireUser();
   if (error) return error;
 
@@ -77,7 +76,7 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(request: Request) {
-  await seedIfEmpty();
+  await ensureSchema();
   const { user, error } = await requireUser();
   if (error) return error;
 
@@ -106,7 +105,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  await seedIfEmpty();
+  await ensureSchema();
   const { user, error } = await requireUser();
   if (error) return error;
 
