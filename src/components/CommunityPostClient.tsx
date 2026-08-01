@@ -8,7 +8,7 @@ import type { CommunityComment, CommunityPost } from "@/db/schema";
 import type { TripDetail } from "@/lib/trips";
 import { CategoryBars } from "@/components/CategoryBars";
 import { Weight } from "@/components/UnitProvider";
-import { CATEGORY_LABELS, type Category } from "@/lib/units";
+import { CATEGORIES, CATEGORY_LABELS, type Category } from "@/lib/units";
 
 export function CommunityPostClient({
   post,
@@ -138,39 +138,59 @@ export function CommunityPostClient({
                   totalGrams={detail.stats.packWeightGrams}
                 />
               </div>
-              <div className="divide-y divide-black/8 overflow-hidden rounded-[1.25rem] border border-black/8 bg-white/80">
-                {detail.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between gap-4 px-5 py-3"
-                  >
-                    <div>
-                      <div className="font-semibold">
-                        {item.name}
-                        {item.quantity === 0 && (
-                          <span className="ml-2 rounded-full bg-black/8 px-2 py-0.5 text-xs">
-                            qty 0
-                          </span>
-                        )}
-                        {item.quantity > 1 && (
-                          <span className="ml-2 rounded-full bg-black/8 px-2 py-0.5 text-xs">
-                            ×{item.quantity}
-                          </span>
-                        )}
+              <div className="space-y-3">
+                {CATEGORIES.map((cat) => {
+                  const list = detail.items.filter((i) => i.category === cat);
+                  if (!list.length) return null;
+                  const grams = list.reduce(
+                    (sum, i) => sum + i.weightGrams * i.quantity,
+                    0,
+                  );
+                  return (
+                    <div
+                      key={cat}
+                      className="overflow-hidden rounded-[1.25rem] border border-black/10 bg-white/90"
+                    >
+                      <div className="flex items-center justify-between gap-3 px-5 py-3">
+                        <div className="font-semibold">
+                          {CATEGORY_LABELS[cat]}
+                        </div>
+                        <div className="text-sm text-ink-soft">
+                          {list.length} · <Weight grams={grams} />
+                        </div>
                       </div>
-                      <div className="text-sm text-ink-soft">
-                        {item.brand || "Unbranded"} ·{" "}
-                        {CATEGORY_LABELS[item.category as Category]}
-                        {item.worn ? " · Worn" : ""}
-                        {item.consumable ? " · Consumable" : ""}
-                        {item.maybe ? " · Maybe" : ""}
+                      <div className="divide-y divide-black/8 border-t border-black/8">
+                        {list.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between gap-4 px-5 py-3"
+                          >
+                            <div>
+                              <div className="font-semibold">
+                                {item.name}
+                                {item.quantity > 1 && (
+                                  <span className="ml-2 rounded-full bg-black/8 px-2 py-0.5 text-xs">
+                                    ×{item.quantity}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-ink-soft">
+                                {item.brand || "Unbranded"}
+                                {item.worn ? " · Worn" : ""}
+                                {item.consumable ? " · Consumable" : ""}
+                              </div>
+                            </div>
+                            <div className="text-right font-semibold tabular-nums">
+                              <Weight
+                                grams={item.weightGrams * item.quantity}
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div className="text-right font-semibold tabular-nums">
-                      <Weight grams={item.weightGrams * item.quantity} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           ) : (

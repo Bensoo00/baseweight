@@ -22,6 +22,7 @@ export function LockerClient({
   const [items, setItems] = useState(initialItems);
   const [stats, setStats] = useState(summary);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   async function refresh() {
     const res = await fetch("/api/locker");
@@ -57,6 +58,16 @@ export function LockerClient({
 
   async function removeItem(id: number) {
     await fetch(`/api/locker?id=${id}`, { method: "DELETE" });
+    await refresh();
+  }
+
+  async function moveCategory(id: number, category: Category) {
+    await fetch("/api/locker", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, category }),
+    });
+    setEditingId(null);
     await refresh();
   }
 
@@ -137,27 +148,62 @@ export function LockerClient({
                 </button>
                 {!isCollapsed && (
                   <div className="divide-y divide-black/8 border-t border-black/8">
-                    {list.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between gap-3 px-5 py-3"
-                      >
-                        <div className="min-w-0">
-                          <div className="truncate font-medium">{item.name}</div>
-                          <div className="truncate text-sm text-ink-soft">
-                            {item.brand || "Unbranded"} ·{" "}
-                            <Weight grams={item.weightGrams * item.quantity} />
+                    {list.map((item) => {
+                      const editing = editingId === item.id;
+                      return (
+                        <div key={item.id} className="px-5 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              className="min-w-0 flex-1 text-left"
+                              onClick={() =>
+                                setEditingId(editing ? null : item.id)
+                              }
+                            >
+                              <div className="truncate font-medium">
+                                {item.name}
+                              </div>
+                              <div className="truncate text-sm text-ink-soft">
+                                {item.brand || "Unbranded"} ·{" "}
+                                <Weight
+                                  grams={item.weightGrams * item.quantity}
+                                />
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              className="chip text-[var(--signal-fail)]"
+                              onClick={() => removeItem(item.id)}
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
+                          {editing && (
+                            <label className="mt-3 block space-y-1.5">
+                              <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                                Move to category
+                              </span>
+                              <select
+                                className="field"
+                                value={item.category}
+                                onChange={(e) =>
+                                  moveCategory(
+                                    item.id,
+                                    e.target.value as Category,
+                                  )
+                                }
+                              >
+                                {CATEGORIES.map((cat) => (
+                                  <option key={cat} value={cat}>
+                                    {CATEGORY_LABELS[cat]}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
                         </div>
-                        <button
-                          type="button"
-                          className="chip text-[var(--signal-fail)]"
-                          onClick={() => removeItem(item.id)}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

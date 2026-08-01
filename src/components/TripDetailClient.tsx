@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowUpRight,
   Check,
+  ChevronDown,
   Copy,
   Megaphone,
   Plus,
@@ -57,6 +58,9 @@ export function TripDetailClient({
   const [openId, setOpenId] = useState<number | null>(
     initial.items[0]?.id ?? null,
   );
+  const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>(
+    {},
+  );
   const [newItem, setNewItem] = useState({
     name: "",
     brand: "",
@@ -80,6 +84,18 @@ export function TripDetailClient({
   );
 
   const availableLocker = locker.filter((l) => !inTripLockerIds.has(l.id));
+
+  const groupedItems = useMemo(() => {
+    const map = new Map<Category, TripItem[]>();
+    for (const cat of CATEGORIES) map.set(cat, []);
+    for (const item of detail.items) {
+      const cat = (CATEGORIES.includes(item.category as Category)
+        ? item.category
+        : "other") as Category;
+      map.get(cat)!.push(item);
+    }
+    return [...map.entries()].filter(([, list]) => list.length > 0);
+  }, [detail.items]);
 
   const targetDisplay =
     unit === "g"
@@ -640,111 +656,184 @@ export function TripDetailClient({
             </div>
           )}
 
-          <div className="divide-y divide-black/8 overflow-hidden rounded-[1.25rem] border border-black/8 bg-white/80">
-            {detail.items.length === 0 && (
-              <div className="p-8 text-ink-soft">
-                Nothing packed yet. Add an item, import a CSV, or pull from
-                inventory.
-              </div>
-            )}
-            {detail.items.map((item) => {
-              const open = openId === item.id;
-              return (
-                <div key={item.id} className="px-5 py-4">
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-4 text-left"
-                    onClick={() => setOpenId(open ? null : item.id)}
+          {detail.items.length === 0 ? (
+            <div className="glass-card-soft p-8 text-ink-soft">
+              Nothing packed yet. Add an item, import a CSV, or pull from
+              inventory.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {groupedItems.map(([category, list]) => {
+                const isCollapsed = collapsedCats[category];
+                const grams = list.reduce(
+                  (sum, i) => sum + i.weightGrams * i.quantity,
+                  0,
+                );
+                return (
+                  <div
+                    key={category}
+                    className="overflow-hidden rounded-[1.25rem] border border-black/10 bg-white/90"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-semibold">
-                        {item.name}
-                        {item.quantity === 0 && (
-                          <span className="ml-2 rounded-full bg-black/8 px-2 py-0.5 text-xs font-medium">
-                            qty 0
-                          </span>
-                        )}
-                        {item.quantity > 1 && (
-                          <span className="ml-2 rounded-full bg-black/8 px-2 py-0.5 text-xs font-medium">
-                            ×{item.quantity}
-                          </span>
-                        )}
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left"
+                      onClick={() =>
+                        setCollapsedCats((prev) => ({
+                          ...prev,
+                          [category]: !prev[category],
+                        }))
+                      }
+                    >
+                      <div>
+                        <div className="font-semibold">
+                          {CATEGORY_LABELS[category]}
+                        </div>
+                        <div className="text-sm text-ink-soft">
+                          {list.length} item{list.length === 1 ? "" : "s"} ·{" "}
+                          <Weight grams={grams} />
+                        </div>
                       </div>
-                      <div className="truncate text-sm text-ink-soft">
-                        {item.brand || "Unbranded"} ·{" "}
-                        {CATEGORY_LABELS[item.category as Category]}
-                        {item.worn ? " · Worn" : ""}
-                        {item.consumable ? " · Consumable" : ""}
-                        {item.maybe ? " · Maybe" : ""}
-                      </div>
-                    </div>
-                    <div className="hidden text-right sm:block">
-                      <div className="font-semibold tabular-nums">
-                        <Weight grams={item.weightGrams * item.quantity} />
-                      </div>
-                      <div className="text-sm text-ink-soft">
-                        {formatUsd(item.priceUsd)}
-                      </div>
-                    </div>
-                    <span className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-white">
-                      <ArrowUpRight
-                        size={16}
-                        className={`transition ${open ? "rotate-45" : ""}`}
+                      <ChevronDown
+                        size={18}
+                        className={`shrink-0 text-ink-soft transition ${
+                          isCollapsed ? "-rotate-90" : ""
+                        }`}
                       />
-                    </span>
-                  </button>
-                  {open && (
-                    <div className="mt-3 flex flex-wrap gap-2 rounded-2xl bg-[var(--paper-2)] p-4">
-                      <button
-                        type="button"
-                        className="chip"
-                        data-active={item.worn}
-                        onClick={() =>
-                          patchItem(item.id, {
-                            worn: !item.worn,
-                            maybe: false,
-                          })
-                        }
-                      >
-                        Worn
-                      </button>
-                      <button
-                        type="button"
-                        className="chip"
-                        data-active={item.consumable}
-                        onClick={() =>
-                          patchItem(item.id, { consumable: !item.consumable })
-                        }
-                      >
-                        Consumable
-                      </button>
-                      <button
-                        type="button"
-                        className="chip"
-                        data-active={item.maybe}
-                        onClick={() =>
-                          patchItem(item.id, {
-                            maybe: !item.maybe,
-                            worn: false,
-                          })
-                        }
-                      >
-                        Maybe
-                      </button>
-                      <button
-                        type="button"
-                        className="chip text-[var(--signal-fail)]"
-                        onClick={() => removeItem(item.id)}
-                      >
-                        <Trash2 size={14} className="mr-1" />
-                        Remove from trip
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    </button>
+
+                    {!isCollapsed && (
+                      <div className="divide-y divide-black/8 border-t border-black/8">
+                        {list.map((item) => {
+                          const open = openId === item.id;
+                          return (
+                            <div key={item.id} className="px-5 py-3.5">
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-4 text-left"
+                                onClick={() =>
+                                  setOpenId(open ? null : item.id)
+                                }
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate font-semibold">
+                                    {item.name}
+                                    {item.quantity === 0 && (
+                                      <span className="ml-2 rounded-full bg-black/8 px-2 py-0.5 text-xs font-medium">
+                                        qty 0
+                                      </span>
+                                    )}
+                                    {item.quantity > 1 && (
+                                      <span className="ml-2 rounded-full bg-black/8 px-2 py-0.5 text-xs font-medium">
+                                        ×{item.quantity}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="truncate text-sm text-ink-soft">
+                                    {item.brand || "Unbranded"}
+                                    {item.worn ? " · Worn" : ""}
+                                    {item.consumable ? " · Consumable" : ""}
+                                    {item.maybe ? " · Maybe" : ""}
+                                  </div>
+                                </div>
+                                <div className="hidden text-right sm:block">
+                                  <div className="font-semibold tabular-nums">
+                                    <Weight
+                                      grams={item.weightGrams * item.quantity}
+                                    />
+                                  </div>
+                                  <div className="text-sm text-ink-soft">
+                                    {formatUsd(item.priceUsd)}
+                                  </div>
+                                </div>
+                                <span className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-white">
+                                  <ArrowUpRight
+                                    size={16}
+                                    className={`transition ${open ? "rotate-45" : ""}`}
+                                  />
+                                </span>
+                              </button>
+                              {open && (
+                                <div className="mt-3 space-y-3 rounded-2xl bg-[var(--paper-2)] p-4">
+                                  <label className="block space-y-1.5">
+                                    <span className="text-sm font-semibold">
+                                      Category
+                                    </span>
+                                    <select
+                                      className="field"
+                                      value={item.category}
+                                      onChange={(e) =>
+                                        patchItem(item.id, {
+                                          category: e.target.value,
+                                        })
+                                      }
+                                    >
+                                      {CATEGORIES.map((cat) => (
+                                        <option key={cat} value={cat}>
+                                          {CATEGORY_LABELS[cat]}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      className="chip"
+                                      data-active={item.worn}
+                                      onClick={() =>
+                                        patchItem(item.id, {
+                                          worn: !item.worn,
+                                          maybe: false,
+                                        })
+                                      }
+                                    >
+                                      Worn
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="chip"
+                                      data-active={item.consumable}
+                                      onClick={() =>
+                                        patchItem(item.id, {
+                                          consumable: !item.consumable,
+                                        })
+                                      }
+                                    >
+                                      Consumable
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="chip"
+                                      data-active={item.maybe}
+                                      onClick={() =>
+                                        patchItem(item.id, {
+                                          maybe: !item.maybe,
+                                          worn: false,
+                                        })
+                                      }
+                                    >
+                                      Maybe
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="chip text-[var(--signal-fail)]"
+                                      onClick={() => removeItem(item.id)}
+                                    >
+                                      <Trash2 size={14} className="mr-1" />
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
     </div>

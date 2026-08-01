@@ -68,6 +68,43 @@ export async function POST(request: Request) {
   return NextResponse.json({ item }, { status: 201 });
 }
 
+const patchSchema = z.object({
+  id: z.number().int().positive(),
+  category: z.enum(CATEGORIES).optional(),
+  name: z.string().min(1).max(120).optional(),
+  brand: z.string().max(80).optional(),
+  quantity: z.number().int().positive().max(99).optional(),
+});
+
+export async function PATCH(request: Request) {
+  await seedIfEmpty();
+  const { user, error } = await requireUser();
+  if (error) return error;
+
+  const parsed = patchSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const { id, ...patch } = parsed.data;
+  const updates: Partial<typeof lockerItems.$inferInsert> = {};
+  if (patch.category) updates.category = patch.category;
+  if (patch.name) updates.name = patch.name;
+  if (typeof patch.brand === "string") updates.brand = patch.brand;
+  if (typeof patch.quantity === "number") updates.quantity = patch.quantity;
+
+  const [item] = await db
+    .update(lockerItems)
+    .set(updates)
+    .where(and(eq(lockerItems.id, id), eq(lockerItems.userId, user.id)))
+    .returning();
+
+  if (!item) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  return NextResponse.json({ item });
+}
+
 export async function DELETE(request: Request) {
   await seedIfEmpty();
   const { user, error } = await requireUser();

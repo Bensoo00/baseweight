@@ -37,6 +37,7 @@ const patchSchema = z.object({
   consumable: z.boolean().optional(),
   maybe: z.boolean().optional(),
   quantity: z.number().int().min(0).max(99).optional(),
+  category: z.enum(CATEGORIES).optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -106,6 +107,7 @@ export async function PATCH(request: Request, { params }: Params) {
   if (typeof parsed.data.quantity === "number") {
     updates.quantity = parsed.data.quantity;
   }
+  if (parsed.data.category) updates.category = parsed.data.category;
 
   await db
     .update(tripItems)
