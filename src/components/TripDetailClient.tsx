@@ -886,7 +886,7 @@ export function TripDetailClient({
               inventory.
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="category-board">
               {groupedItems.map(([category, list]) => {
                 const isCollapsed = collapsedCats[category];
                 const grams = list.reduce(
@@ -900,10 +900,10 @@ export function TripDetailClient({
                 return (
                   <div
                     key={category}
-                    className="category-tile flex min-h-[220px] flex-col overflow-hidden"
+                    className="category-tile flex flex-col overflow-hidden"
                   >
                     <div
-                      className="relative flex items-start justify-between gap-2 px-3.5 py-3"
+                      className="relative flex items-start justify-between gap-2 px-4 py-3.5"
                       style={{ background: headerColor, color: headerInk }}
                     >
                       <button
@@ -916,12 +916,12 @@ export function TripDetailClient({
                           }))
                         }
                       >
-                        <div className="text-[15px] font-semibold leading-tight tracking-tight">
+                        <div className="text-base font-semibold leading-tight tracking-tight md:text-lg">
                           {CATEGORY_LABELS[category]}
                         </div>
                         <div
-                          className="mt-0.5 text-xs tabular-nums"
-                          style={{ opacity: 0.85 }}
+                          className="mt-1 text-sm tabular-nums"
+                          style={{ opacity: 0.88 }}
                         >
                           {list.length} item{list.length === 1 ? "" : "s"} ·{" "}
                           <Weight grams={grams} />
@@ -1019,47 +1019,47 @@ export function TripDetailClient({
                     </div>
 
                     {!isCollapsed && (
-                      <div className="flex flex-1 flex-col divide-y divide-black/8 bg-[rgba(255,255,255,0.82)]">
+                      <div className="flex flex-1 flex-col divide-y divide-black/8 bg-[rgba(255,255,255,0.88)]">
                         {list.map((item) => {
                           const open = openId === item.id;
                           return (
-                            <div key={item.id} className="px-3 py-2">
+                            <div key={item.id} className="px-4 py-3">
                               <button
                                 type="button"
-                                className="flex w-full items-center gap-2 text-left"
+                                className="flex w-full items-center gap-3 text-left"
                                 onClick={() =>
                                   setOpenId(open ? null : item.id)
                                 }
                               >
                                 <div
-                                  className="mt-0.5 h-8 w-1 shrink-0 rounded-full"
+                                  className="mt-0.5 h-10 w-1.5 shrink-0 rounded-full"
                                   style={{ background: headerColor }}
                                   aria-hidden
                                 />
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate text-sm font-medium leading-tight">
+                                  <div className="truncate text-[15px] font-medium leading-snug">
                                     {item.name}
                                     {item.quantity > 1 && (
-                                      <span className="ml-1.5 rounded-full bg-black/8 px-1.5 py-0.5 text-[10px] font-medium">
+                                      <span className="ml-1.5 rounded-full bg-black/8 px-1.5 py-0.5 text-[11px] font-medium">
                                         ×{item.quantity}
                                       </span>
                                     )}
                                   </div>
-                                  <div className="truncate text-xs text-ink-soft">
+                                  <div className="mt-0.5 truncate text-sm text-ink-soft">
                                     {item.brand || "Unbranded"}
                                     {item.worn ? " · Worn" : ""}
                                     {item.consumable ? " · Cons." : ""}
                                     {item.maybe ? " · Maybe" : ""}
                                   </div>
                                 </div>
-                                <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
+                                <div className="shrink-0 text-right text-[15px] font-semibold tabular-nums">
                                   <Weight
                                     grams={item.weightGrams * item.quantity}
                                   />
                                 </div>
-                                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-black/10 bg-white">
+                                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-black/10 bg-white">
                                   <ArrowUpRight
-                                    size={13}
+                                    size={14}
                                     className={`transition ${open ? "rotate-45" : ""}`}
                                   />
                                 </span>
@@ -1259,7 +1259,7 @@ export function TripDetailClient({
                     {isCollapsed && (
                       <button
                         type="button"
-                        className="flex flex-1 items-center justify-center bg-[rgba(255,255,255,0.7)] px-3 py-6 text-sm text-ink-soft"
+                        className="bg-[rgba(255,255,255,0.75)] px-4 py-5 text-left text-sm text-ink-soft hover:text-ink"
                         onClick={() =>
                           setCollapsedCats((prev) => ({
                             ...prev,
@@ -1267,7 +1267,8 @@ export function TripDetailClient({
                           }))
                         }
                       >
-                        Expand items
+                        Show {list.length} item
+                        {list.length === 1 ? "" : "s"}
                       </button>
                     )}
                   </div>

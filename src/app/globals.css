@@ -237,7 +237,19 @@ textarea {
   -webkit-backdrop-filter: blur(18px) saturate(1.2);
 }
 
+.category-board {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  scroll-snap-type: x proximity;
+}
+
 .category-tile {
+  flex: 1 1 0;
+  min-width: min(100%, 320px);
+  max-width: 100%;
   border-radius: calc(var(--radius) - 0.25rem);
   border: 1px solid rgba(16, 32, 24, 0.1);
   background: rgba(255, 255, 255, 0.55);
@@ -246,6 +258,19 @@ textarea {
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  scroll-snap-align: start;
+}
+
+@media (max-width: 699px) {
+  .category-board {
+    flex-direction: column;
+    overflow-x: visible;
+  }
+
+  .category-tile {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 .glass-divider {
