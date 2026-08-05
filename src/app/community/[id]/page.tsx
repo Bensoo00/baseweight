@@ -18,8 +18,8 @@ export default async function CommunityPostPage({ params }: Props) {
   if (!data) notFound();
 
   return (
-    <Shell user={user} active="/community">
-      <div className="flex-1 px-5 py-6 md:px-8 md:py-8">
+    <Shell user={user}>
+      <div className="dash-panel">
         <CommunityPostClient
           post={data.post}
           comments={data.comments}

@@ -33,9 +33,9 @@ export default async function TripDetailPage({ params }: Props) {
   if (!detail) notFound();
 
   return (
-    <Shell user={user} active="/trips">
-      <div className="flex-1 px-5 py-6 md:px-8 md:py-8">
-        <div className="glass-card p-4 md:p-6">
+    <Shell user={user}>
+      <div className="dash-panel">
+        <div className="biz-card p-4 md:p-6">
           <TripDetailClient
             initial={detail}
             locker={locker}

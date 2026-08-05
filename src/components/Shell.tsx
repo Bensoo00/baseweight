@@ -1,97 +1,112 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Backpack,
-  BookOpen,
   LayoutDashboard,
   MessageSquare,
   Package,
-  Sparkles,
+  Plus,
+  Route,
 } from "lucide-react";
 import { UnitToggle } from "@/components/UnitProvider";
 import type { PublicUser } from "@/db/schema";
 
-const tabs = [
-  { id: "dashboard", label: "Home", icon: LayoutDashboard },
+export const DASH_TABS = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "collection", label: "Collection", icon: Package },
   { id: "packs", label: "Packs", icon: Backpack },
-  { id: "gear", label: "Gear", icon: Package },
-  { id: "journal", label: "Journal", icon: BookOpen },
-  { id: "coach", label: "Coach", icon: Sparkles },
-  { id: "community", label: "Feed", icon: MessageSquare },
-];
+  { id: "trips", label: "Trips", icon: Route },
+  { id: "community", label: "Community", icon: MessageSquare },
+] as const;
 
-function scrollToId(id: string) {
-  const el = document.getElementById(id);
-  if (!el) return false;
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
-  window.history.replaceState(null, "", `/#${id}`);
-  return true;
-}
+export type DashTabId = (typeof DASH_TABS)[number]["id"];
 
-const hashAliases: Record<string, string> = {
+const hashAliases: Record<string, DashTabId | "account"> = {
   home: "dashboard",
   snapshot: "dashboard",
-  locker: "gear",
-  trips: "packs",
-  account: "dashboard",
+  gear: "collection",
+  locker: "collection",
+  feed: "community",
+  journal: "trips",
+  coach: "dashboard",
+  account: "account",
+};
+
+type ShellProps = {
+  children: React.ReactNode;
+  user?: PublicUser | null;
+  activeTab?: DashTabId;
+  onTabChange?: (id: DashTabId) => void;
+  primaryAction?: { label: string; onClick?: () => void; href?: string };
 };
 
 export function Shell({
   children,
   user = null,
-}: {
-  children: React.ReactNode;
-  user?: PublicUser | null;
-  tone?: "light" | "dark";
-  active?: string;
-}) {
+  activeTab,
+  onTabChange,
+  primaryAction,
+}: ShellProps) {
   const pathname = usePathname() || "/";
   const router = useRouter();
-  const isOnePager = pathname === "/";
-  const [active, setActive] = useState("dashboard");
+  const isHome = pathname === "/";
+  const [localTab, setLocalTab] = useState<DashTabId>("dashboard");
+  const tab = activeTab ?? localTab;
 
   useEffect(() => {
-    if (!isOnePager) return;
-
+    if (!isHome) return;
     const raw = window.location.hash.replace("#", "");
-    const hash = hashAliases[raw] ?? raw;
-    if (hash) {
-      setActive(hash);
-      requestAnimationFrame(() => scrollToId(hash));
+    if (!raw) return;
+    const mapped = hashAliases[raw] ?? raw;
+    if (mapped === "account") {
+      onTabChange?.("dashboard");
+      setLocalTab("dashboard");
+      return;
     }
-
-    const sectionIds = tabs.map((t) => t.id);
-    const root = document.querySelector(".onepager-scroll");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible?.target?.id) setActive(visible.target.id);
-      },
-      {
-        root,
-        threshold: [0.15, 0.3, 0.45],
-        rootMargin: "-10% 0px -55% 0px",
-      },
-    );
-
-    for (const id of sectionIds) {
-      const node = document.getElementById(id);
-      if (node) observer.observe(node);
+    if (DASH_TABS.some((t) => t.id === mapped)) {
+      const id = mapped as DashTabId;
+      setLocalTab(id);
+      onTabChange?.(id);
     }
-    return () => observer.disconnect();
-  }, [isOnePager]);
+  }, [isHome, onTabChange]);
 
-  function go(id: string) {
-    setActive(id);
-    if (isOnePager) {
-      scrollToId(id);
+  function go(id: DashTabId) {
+    setLocalTab(id);
+    onTabChange?.(id);
+    if (isHome) {
+      window.history.replaceState(null, "", `/#${id}`);
       return;
     }
     router.push(`/#${id}`);
+  }
+
+  function Nav({ mobile = false }: { mobile?: boolean }) {
+    return (
+      <nav
+        className={mobile ? "dash-nav dash-nav-mobile" : "dash-nav dash-nav-top"}
+        aria-label={mobile ? "Mobile" : "Main"}
+      >
+        {DASH_TABS.map((t) => {
+          const Icon = t.icon;
+          const active = isHome && tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className="dash-nav-item"
+              data-active={active}
+              onClick={() => go(t.id)}
+            >
+              <Icon size={mobile ? 20 : 16} strokeWidth={active ? 2.4 : 1.9} />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    );
   }
 
   return (
@@ -100,73 +115,68 @@ export function Shell({
       <div className="app-frame">
         <div className="app-shell bloom-shell">
           <header className="bloom-header">
-            <button
-              type="button"
-              onClick={() => go("dashboard")}
-              className="flex min-w-0 items-center gap-2.5"
-            >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-ink text-xs font-semibold text-white">
-                Bw
-              </span>
-              <span className="truncate text-lg font-semibold tracking-tight text-ink">
-                Baseweight
-              </span>
-            </button>
-
-            <nav className="nav-glass" aria-label="Sections">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  data-active={isOnePager && active === tab.id}
-                  onClick={() => go(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-5">
               <button
                 type="button"
-                onClick={() => go(user ? "dashboard" : "account")}
-                className="hidden max-w-[9rem] truncate rounded-md border border-[var(--line)] bg-white px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-[var(--paper-2)] sm:block"
+                onClick={() => go("dashboard")}
+                className="flex shrink-0 items-center gap-2.5"
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-sm font-bold text-white">
+                  Bw
+                </span>
+                <span className="hidden text-lg font-semibold tracking-tight text-ink sm:inline">
+                  Baseweight
+                </span>
+              </button>
+              <Nav />
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <UnitToggle />
+              {primaryAction &&
+                (primaryAction.href ? (
+                  <Link href={primaryAction.href} className="pill pill-cta !py-2">
+                    <Plus size={16} />
+                    <span className="hidden sm:inline">{primaryAction.label}</span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    className="pill pill-cta !py-2"
+                    onClick={primaryAction.onClick}
+                  >
+                    <Plus size={16} />
+                    <span className="hidden sm:inline">{primaryAction.label}</span>
+                  </button>
+                ))}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isHome) {
+                    go("dashboard");
+                    window.history.replaceState(null, "", "/#account");
+                    requestAnimationFrame(() =>
+                      document
+                        .getElementById("account-panel")
+                        ?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "nearest",
+                        }),
+                    );
+                  } else {
+                    router.push("/#account");
+                  }
+                }}
+                className="hidden rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-ink transition hover:bg-[var(--paper-2)] sm:block"
                 title={user ? user.email : "Sign in"}
               >
-                {user ? user.name : "Sign in"}
+                {user ? "Me" : "Sign in"}
               </button>
-              <UnitToggle />
             </div>
           </header>
 
-          <div
-            className={
-              isOnePager
-                ? "onepager-scroll"
-                : "flex flex-1 flex-col overflow-y-auto pb-[4.75rem]"
-            }
-          >
-            {children}
-          </div>
-
-          <nav className="taskbar" aria-label="Main">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = isOnePager && active === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className="taskbar-item"
-                  data-active={isActive}
-                  onClick={() => go(tab.id)}
-                >
-                  <Icon size={20} strokeWidth={isActive ? 2.4 : 1.9} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+          <div className="dash-scroll">{children}</div>
+          <Nav mobile />
         </div>
       </div>
     </>
