@@ -199,7 +199,7 @@ export function LockerClient({
               <div key={category}>
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-white/4"
+                  className="flex w-full items-center justify-between gap-3 bg-[#24272b] px-4 py-2.5 text-left transition hover:bg-[#2a2e33]"
                   onClick={() =>
                     setCollapsed((prev) => ({
                       ...prev,
