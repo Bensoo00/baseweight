@@ -9,7 +9,6 @@ import {
   MessageSquare,
   Package,
 } from "lucide-react";
-import { AddGearForm } from "@/components/AddGearForm";
 import { AuthGate, AuthPanel } from "@/components/AuthPanel";
 import { CommunityFeed } from "@/components/CommunityFeed";
 import { JournalClient } from "@/components/JournalClient";
@@ -17,11 +16,11 @@ import { LockerClient } from "@/components/LockerClient";
 import { PacksClient } from "@/components/PacksClient";
 import { Shell, type DashTabId } from "@/components/Shell";
 import { TripsClient } from "@/components/TripsClient";
-import { Weight } from "@/components/UnitProvider";
+import { Weight, useUnit } from "@/components/UnitProvider";
 import type { JournalEntryDetail } from "@/lib/journal";
 import type { CommunityPostWithMeta } from "@/lib/community";
 import type { PackStats } from "@/lib/pack-stats";
-import { formatUsd } from "@/lib/units";
+import { CATEGORY_LABELS, formatUsd, type Category } from "@/lib/units";
 import type { LockerItem, PublicUser, Trail } from "@/db/schema";
 
 type PackRow = {
@@ -30,6 +29,7 @@ type PackRow = {
   nights: number;
   season: string;
   shareSlug: string;
+  targetBaseWeightGrams: number;
   trail: Trail | null;
   stats: PackStats;
   failCount: number;
@@ -55,27 +55,12 @@ type Props = {
   }[];
 };
 
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 export function DashboardApp(props: Props) {
   const [tab, setTab] = useState<DashTabId>("dashboard");
   const mainPack = props.packs[0] ?? null;
 
   const primaryAction = useMemo(() => {
-    if (tab === "collection") {
-      return {
-        label: "Add gear",
-        onClick: () => {
-          setTab("collection");
-          requestAnimationFrame(() =>
-            document.getElementById("add-gear")?.scrollIntoView({
-              behavior: "smooth",
-              block: "start",
-            }),
-          );
-        },
-      };
-    }
+    if (tab === "collection") return null;
     if (tab === "trips") {
       return { label: "New trip", onClick: () => setTab("trips") };
     }
@@ -90,7 +75,7 @@ export function DashboardApp(props: Props) {
       user={props.user}
       activeTab={tab}
       onTabChange={setTab}
-      primaryAction={primaryAction}
+      primaryAction={primaryAction ?? undefined}
     >
       <div className="dash-panel">
         {tab === "dashboard" && (
@@ -107,27 +92,16 @@ export function DashboardApp(props: Props) {
         {tab === "collection" && (
           <Panel
             title="Item collection"
-            subtitle="Your closet — add once, drop into any pack."
+            subtitle="Your closet — add rows inline, like LighterPack."
           >
             <AuthGate
               user={props.user}
               message="Sign in to manage gear you own."
             >
-              <div className="biz-card p-5 md:p-6">
-                <LockerClient
-                  initialItems={props.locker}
-                  summary={props.lockerSummary}
-                />
-                <div
-                  id="add-gear"
-                  className="mt-8 border-t border-[var(--line)] pt-6"
-                >
-                  <h3 className="mb-4 text-lg font-semibold tracking-tight">
-                    Add gear
-                  </h3>
-                  <AddGearForm />
-                </div>
-              </div>
+              <LockerClient
+                initialItems={props.locker}
+                summary={props.lockerSummary}
+              />
             </AuthGate>
           </Panel>
         )}
@@ -240,23 +214,30 @@ function DashboardHome({
   journalCount: number;
   onOpen: (id: DashTabId) => void;
 }) {
+  const { format } = useUnit();
+  const targetGrams = mainPack?.targetBaseWeightGrams || 4536;
   const targetProgress = mainPack
     ? Math.min(
         100,
-        Math.round((mainPack.stats.baseWeightGrams / 4536) * 100),
+        Math.round((mainPack.stats.baseWeightGrams / targetGrams) * 100),
       )
     : 0;
+  const overTarget = mainPack
+    ? mainPack.stats.baseWeightGrams > targetGrams
+    : false;
 
-  const bars = (mainPack?.stats.categoryBreakdown ?? [])
-    .slice(0, 7)
-    .map((row, i) => ({
-      label: WEEKDAYS[i] ?? row.category.slice(0, 3),
-      pct:
-        mainPack && mainPack.stats.packWeightGrams > 0
-          ? (row.grams / mainPack.stats.packWeightGrams) * 100
-          : 20 + ((i * 13) % 50),
-      filled: i % 2 === 0,
-    }));
+  const heaviest = [...(mainPack?.stats.categoryBreakdown ?? [])]
+    .sort((a, b) => b.grams - a.grams)
+    .slice(0, 5);
+
+  const maxCatGrams = heaviest[0]?.grams || 1;
+  const tripReadyCount = packs.filter(
+    (p) => Boolean(p.trail) || p.nights > 0,
+  ).length;
+  const issueCount = packs.reduce(
+    (sum, p) => sum + p.failCount + p.warnCount,
+    0,
+  );
 
   const boardColumns = [
     {
@@ -292,15 +273,74 @@ function DashboardHome({
         </p>
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <button
+          type="button"
+          onClick={() => onOpen("packs")}
+          className="biz-card px-4 py-3.5 text-left transition hover:border-white/20"
+        >
+          <div className="text-xs text-ink-soft">Main pack base</div>
+          <div className="mt-1.5 text-2xl font-bold tracking-tight">
+            {mainPack ? (
+              <Weight grams={mainPack.stats.baseWeightGrams} />
+            ) : (
+              "—"
+            )}
+          </div>
+          <div className="mt-1 truncate text-xs text-ink-soft">
+            {mainPack?.name ?? "No pack yet"}
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpen("packs")}
+          className="biz-card px-4 py-3.5 text-left transition hover:border-white/20"
+        >
+          <div className="text-xs text-ink-soft">Packs</div>
+          <div className="mt-1.5 text-2xl font-bold tracking-tight">
+            {packs.length}
+          </div>
+          <div className="mt-1 text-xs trend-up">
+            {tripReadyCount} trip-ready
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpen("collection")}
+          className="biz-card px-4 py-3.5 text-left transition hover:border-white/20"
+        >
+          <div className="text-xs text-ink-soft">Kit value</div>
+          <div className="mt-1.5 text-2xl font-bold tracking-tight">
+            {formatUsd(lockerSummary.totalValueUsd)}
+          </div>
+          <div className="mt-1 text-xs text-ink-soft">
+            {lockerSummary.itemCount} pieces
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpen("trips")}
+          className="biz-card px-4 py-3.5 text-left transition hover:border-white/20"
+        >
+          <div className="text-xs text-ink-soft">Open checks</div>
+          <div className="mt-1.5 text-2xl font-bold tracking-tight">
+            {issueCount}
+          </div>
+          <div className="mt-1 text-xs text-ink-soft">
+            {journalCount} journal {journalCount === 1 ? "entry" : "entries"}
+          </div>
+        </button>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-12">
-        <div className="biz-card p-5 lg:col-span-5">
+        <div className="biz-card p-5 lg:col-span-7">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-ink">Weight mix</p>
+              <p className="text-sm font-medium">Heaviest categories</p>
               <p className="mt-0.5 text-xs text-ink-soft">
                 {mainPack
-                  ? `From ${mainPack.name}`
-                  : "Create a pack to chart categories"}
+                  ? `Where weight sits in ${mainPack.name}`
+                  : "Create a pack to see category weights"}
               </p>
             </div>
             <button
@@ -312,38 +352,47 @@ function DashboardHome({
               <ArrowUpRight size={18} />
             </button>
           </div>
-          <div className="mt-6 flex h-36 items-end justify-between gap-2 px-1">
-            {(bars.length
-              ? bars
-              : WEEKDAYS.map((d, i) => ({
-                  label: d,
-                  pct: 18 + ((i * 17) % 55),
-                  filled: i % 2 === 0,
-                }))
-            ).map((bar) => (
-              <div
-                key={bar.label}
-                className="flex flex-1 flex-col items-center gap-2"
-              >
-                <div className="flex h-28 w-full items-end justify-center">
-                  <div
-                    className={`w-[70%] max-w-8 rounded-md ${
-                      bar.filled
-                        ? "bg-ink"
-                        : "bg-[repeating-linear-gradient(-45deg,#111_0_2px,transparent_2px_5px)]"
-                    }`}
-                    style={{ height: `${Math.max(12, bar.pct)}%` }}
-                  />
+          <div className="mt-5 space-y-3">
+            {heaviest.length === 0 && (
+              <p className="text-sm text-ink-soft">No pack items yet.</p>
+            )}
+            {heaviest.map((row, i) => {
+              const pct = (row.grams / maxCatGrams) * 100;
+              return (
+                <div key={row.category}>
+                  <div className="mb-1 flex justify-between gap-3 text-sm">
+                    <span className="truncate">
+                      {CATEGORY_LABELS[row.category as Category] ??
+                        row.category}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-ink-soft">
+                      <Weight grams={row.grams} />
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-white/8">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.max(6, pct)}%`,
+                        background:
+                          i === 0 ? "var(--accent)" : "var(--success)",
+                      }}
+                    />
+                  </div>
                 </div>
-                <span className="text-[11px] text-ink-soft">{bar.label}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        <div className="biz-card flex flex-col items-center justify-center p-5 lg:col-span-3">
-          <p className="text-sm font-medium text-ink">vs 10 lb target</p>
-          <div className="relative mt-4 grid h-36 w-36 place-items-center">
+        <div className="biz-card flex flex-col p-5 lg:col-span-5">
+          <p className="text-sm font-medium">Main pack vs your target</p>
+          <p className="mt-0.5 text-xs text-ink-soft">
+            {mainPack
+              ? `Target ${format(targetGrams)}`
+              : "Set a target on any pack"}
+          </p>
+          <div className="relative mx-auto mt-4 grid h-36 w-36 place-items-center">
             <svg
               viewBox="0 0 120 120"
               className="absolute inset-0 h-full w-full"
@@ -353,7 +402,7 @@ function DashboardHome({
                 cy="60"
                 r="46"
                 fill="none"
-                stroke="#e4e4e0"
+                stroke="rgba(255,255,255,0.1)"
                 strokeWidth="8"
                 strokeDasharray="4 6"
               />
@@ -362,60 +411,39 @@ function DashboardHome({
                 cy="60"
                 r="46"
                 fill="none"
-                stroke="#111"
+                stroke={overTarget ? "var(--accent)" : "var(--success)"}
                 strokeWidth="8"
                 strokeLinecap="round"
-                strokeDasharray={`${(targetProgress / 100) * 289} 289`}
+                strokeDasharray={`${(Math.min(targetProgress, 100) / 100) * 289} 289`}
                 transform="rotate(-90 60 60)"
               />
             </svg>
             <div className="relative text-center">
               <div className="text-3xl font-bold tracking-tight">
-                {targetProgress}%
+                {mainPack ? `${targetProgress}%` : "—"}
               </div>
               <div className="text-xs text-ink-soft">of target</div>
             </div>
           </div>
-          <p className="mt-2 text-center text-xs text-ink-soft">
+          <p className="mt-3 text-center text-xs text-ink-soft">
             {mainPack ? (
               <>
                 <Weight grams={mainPack.stats.baseWeightGrams} /> base
+                {overTarget ? " · over target" : " · under target"}
               </>
             ) : (
               "No pack yet"
             )}
           </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1">
-          <button
-            type="button"
-            onClick={() => onOpen("packs")}
-            className="biz-card flex items-center justify-between gap-3 p-5 text-left transition hover:border-ink/30"
-          >
-            <div>
-              <div className="text-3xl font-bold tracking-tight">
-                {packs.length}
-              </div>
-              <div className="mt-1 text-sm text-ink-soft">Packs in progress</div>
-            </div>
-            <ArrowUpRight size={18} className="text-ink-soft" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpen("collection")}
-            className="biz-card flex items-center justify-between gap-3 p-5 text-left transition hover:border-ink/30"
-          >
-            <div>
-              <div className="text-3xl font-bold tracking-tight">
-                {formatUsd(lockerSummary.totalValueUsd)}
-              </div>
-              <div className="mt-1 text-sm text-ink-soft">
-                Kit value · {lockerSummary.itemCount} pieces
-              </div>
-            </div>
-            <ArrowUpRight size={18} className="text-ink-soft" />
-          </button>
+          {mainPack && (
+            <Link
+              href={`/trips/${mainPack.id}`}
+              className="pill pill-cta mt-4 w-fit self-center !py-2"
+            >
+              Open {mainPack.name}
+              <ArrowRight size={14} />
+            </Link>
+          )}
         </div>
       </div>
 
@@ -467,10 +495,10 @@ function DashboardHome({
                     <Link
                       key={`${col.title}-${pack.id}`}
                       href={`/trips/${pack.id}`}
-                      className={`block rounded-2xl border p-4 transition ${
+                      className={`block rounded-2xl border p-3.5 transition ${
                         highlight
-                          ? "border-ink bg-ink text-white"
-                          : "biz-card hover:border-ink/25"
+                          ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                          : "biz-card hover:border-white/20"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">

@@ -15,7 +15,6 @@ import {
 import { hashPassword } from "@/lib/auth";
 import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demo";
 import { shareSlug } from "@/lib/ids";
-import { computePackStats, tripItemsToPackable } from "@/lib/pack-stats";
 
 const trailSeed = [
   {
@@ -705,68 +704,16 @@ async function runSeedIfEmpty() {
     }
   }
 
-  const [{ value: postCount }] = await db
-    .select({ value: count() })
-    .from(communityPosts);
-  if (postCount === 0) {
-    const sample =
-      (
-        await db.select().from(trips).where(eq(trips.userId, demo.id))
-      ).find((t) => t.name.includes("sample trip")) ??
-      (await db.select().from(trips).where(eq(trips.userId, demo.id)))[0];
-    if (sample) {
-      const items = await db
-        .select()
-        .from(tripItems)
-        .where(eq(tripItems.tripId, sample.id));
-      const stats = computePackStats(tripItemsToPackable(items));
-      const trail = sample.trailId
-        ? (
-            await db
-              .select()
-              .from(trails)
-              .where(eq(trails.id, sample.trailId))
-              .limit(1)
-          )[0]
-        : null;
-      const [post] = await db
-        .insert(communityPosts)
-        .values({
-          userId: demo.id,
-          tripId: sample.id,
-          shareSlug: sample.shareSlug,
-          title: "JMT section shakedown — first draft",
-          body: "Looking for cuts before I mail the bear can. Base feels heavy around the canister + pack. Roast me kindly.",
-          authorName: "Demo Hiker",
-          trailName: trail?.name ?? "John Muir Trail",
-          nights: sample.nights,
-          season: sample.season,
-          baseWeightGrams: stats.baseWeightGrams,
-          packWeightGrams: stats.packWeightGrams,
-          itemCount: stats.committedCount,
-          clonesCount: 0,
-          createdAt: new Date().toISOString(),
-        })
-        .returning();
-      if (post) {
-        await db.insert(communityComments).values([
-          {
-            postId: post.id,
-            userId: demo.id,
-            authorName: "ozcounter",
-            body: "Swap the Exos if you can — a frameless 40L would save real ounces if your food carries stay short.",
-            createdAt: new Date().toISOString(),
-          },
-          {
-            postId: post.id,
-            userId: demo.id,
-            authorName: "trailmath",
-            body: "Love seeing pack weight (total − worn) called out. Bar breakdown > pie chart forever.",
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-      }
-    }
+  // Remove seeded demo shakedown so Community stays user-driven.
+  const samplePosts = await db
+    .select({ id: communityPosts.id })
+    .from(communityPosts)
+    .where(eq(communityPosts.title, "JMT section shakedown — first draft"));
+  for (const post of samplePosts) {
+    await db
+      .delete(communityComments)
+      .where(eq(communityComments.postId, post.id));
+    await db.delete(communityPosts).where(eq(communityPosts.id, post.id));
   }
 
   const [{ value: journalCount }] = await db

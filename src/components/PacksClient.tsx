@@ -16,7 +16,6 @@ import {
 import type { Trail } from "@/db/schema";
 import { LOCKER_UPDATED_EVENT } from "@/components/AddGearForm";
 import { Weight } from "@/components/UnitProvider";
-import { formatUsd } from "@/lib/units";
 
 type PackRow = {
   id: number;
@@ -355,109 +354,101 @@ export function PacksClient({
           return (
             <div
               key={pack.id}
-              className={`glass-card flex flex-col gap-4 p-5 transition hover:-translate-y-0.5 animate-rise animate-rise-delay-${(index % 3) + 1}`}
+              className={`glass-card pack-row animate-rise animate-rise-delay-${(index % 3) + 1}`}
             >
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <Link
-                  href={`/trips/${pack.id}`}
-                  className="min-w-0 flex-1 group"
-                >
-                  <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-ink-soft">
-                    <span className="rounded-full bg-white/45 px-2.5 py-0.5">
+              <Link
+                href={`/trips/${pack.id}`}
+                className="min-w-0 flex-1 group"
+              >
+                <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-ink-soft">
+                  {isTrip ? (
+                    <span className="rounded-md bg-[var(--accent-soft)] px-2 py-0.5 text-[var(--accent)]">
+                      Trip
+                    </span>
+                  ) : (
+                    <span className="rounded-md bg-white/8 px-2 py-0.5">
                       Pack
                     </span>
-                    {isTrip && (
-                      <span className="rounded-full bg-[rgba(125,207,74,0.28)] px-2.5 py-0.5 text-[var(--lichen-ink)]">
-                        Trip assigned
-                      </span>
-                    )}
-                    <span>
-                      {pack.trail?.name ??
-                        (isTrip ? "Custom route" : "No trip yet")}
-                      {pack.nights > 0
-                        ? ` · ${pack.nights} night${pack.nights === 1 ? "" : "s"}`
-                        : ""}
-                    </span>
-                  </div>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight group-hover:underline decoration-ink/30 underline-offset-4">
-                    {pack.name}
-                  </h2>
-                  <div className="mt-1 text-xs text-ink-soft md:hidden">
-                    Kit {formatUsd(pack.stats.totalValueUsd)}
-                  </div>
-                </Link>
-                <div className="grid grid-cols-3 gap-4 text-sm md:w-[280px]">
-                  <div>
-                    <div className="text-ink-soft">Base</div>
-                    <div className="mt-0.5 font-semibold">
-                      <Weight grams={pack.stats.baseWeightGrams} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-ink-soft">Items</div>
-                    <div className="mt-0.5 font-semibold">
-                      {pack.stats.itemCount}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-ink-soft">Checks</div>
-                    <div className="mt-0.5 font-semibold">
-                      {pack.failCount === 0 && pack.warnCount === 0
-                        ? "Clear"
-                        : `${pack.failCount}F / ${pack.warnCount}W`}
-                    </div>
+                  )}
+                  <span className="normal-case tracking-normal">
+                    {pack.trail?.name ??
+                      (isTrip ? "Custom route" : "No trip")}
+                    {pack.nights > 0
+                      ? ` · ${pack.nights}n`
+                      : ""}
+                  </span>
+                </div>
+                <h2 className="mt-0.5 truncate text-base font-semibold tracking-tight group-hover:text-[var(--accent)]">
+                  {pack.name}
+                </h2>
+              </Link>
+              <div className="grid grid-cols-3 gap-3 text-sm md:w-[240px]">
+                <div>
+                  <div className="text-[11px] text-ink-soft">Base</div>
+                  <div className="font-semibold tabular-nums">
+                    <Weight grams={pack.stats.baseWeightGrams} />
                   </div>
                 </div>
-                <Link
-                  href={`/trips/${pack.id}`}
-                  className="hidden h-9 w-9 shrink-0 place-items-center rounded-full bg-white/45 transition hover:bg-ink hover:text-white md:grid"
-                  aria-label={`Open ${pack.name}`}
-                >
-                  <ArrowRight size={16} />
-                </Link>
+                <div>
+                  <div className="text-[11px] text-ink-soft">Items</div>
+                  <div className="font-semibold">{pack.stats.itemCount}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-ink-soft">Checks</div>
+                  <div className="font-semibold">
+                    {pack.failCount === 0 && pack.warnCount === 0
+                      ? "Clear"
+                      : `${pack.failCount}F / ${pack.warnCount}W`}
+                  </div>
+                </div>
               </div>
-              <div className="glass-divider" />
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
-                  className="pill pill-soft !py-2 !px-3 text-sm"
+                  className="pill pill-soft !px-2.5 !py-1.5 text-xs"
                   onClick={() => void copyShareLink(pack)}
                   disabled={pending}
                 >
                   {copiedId === pack.id ? (
-                    <Check size={14} />
+                    <Check size={13} />
                   ) : (
-                    <Share2 size={14} />
+                    <Share2 size={13} />
                   )}
-                  {copiedId === pack.id ? "Copied" : "Share"}
                 </button>
                 <button
                   type="button"
-                  className="pill pill-soft !py-2 !px-3 text-sm"
+                  className="pill pill-soft !px-2.5 !py-1.5 text-xs"
                   onClick={() => duplicatePack(pack.id)}
                   disabled={pending}
+                  title="Duplicate"
                 >
-                  <Copy size={14} />
-                  Duplicate
+                  <Copy size={13} />
                 </button>
                 <button
                   type="button"
-                  className="pill pill-soft !py-2 !px-3 text-sm"
+                  className="pill pill-soft !px-2.5 !py-1.5 text-xs"
                   onClick={() => exportCsv(pack)}
                   disabled={pending}
+                  title="Export CSV"
                 >
-                  <Download size={14} />
-                  Export CSV
+                  <Download size={13} />
                 </button>
                 <button
                   type="button"
-                  className="pill pill-soft !py-2 !px-3 text-sm text-[var(--signal-fail)]"
+                  className="pill pill-soft !px-2.5 !py-1.5 text-xs text-[var(--signal-fail)]"
                   onClick={() => deletePack(pack)}
                   disabled={pending}
+                  title="Delete"
                 >
-                  <Trash2 size={14} />
-                  Delete
+                  <Trash2 size={13} />
                 </button>
+                <Link
+                  href={`/trips/${pack.id}`}
+                  className="grid h-8 w-8 place-items-center rounded-lg bg-white/8 transition hover:bg-[var(--accent)] hover:text-white"
+                  aria-label={`Open ${pack.name}`}
+                >
+                  <ArrowRight size={14} />
+                </Link>
               </div>
             </div>
           );

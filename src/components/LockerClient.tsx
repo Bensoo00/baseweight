@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, ChevronDown, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import type { LockerItem } from "@/db/schema";
 import { LOCKER_UPDATED_EVENT } from "@/components/AddGearForm";
 import { Weight } from "@/components/UnitProvider";
@@ -23,6 +23,13 @@ export function LockerClient({
   const [stats, setStats] = useState(summary);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [pending, startTransition] = useTransition();
+  const [draft, setDraft] = useState({
+    name: "",
+    brand: "",
+    category: "other" as Category,
+    weightGrams: 100,
+  });
 
   async function refresh() {
     const res = await fetch("/api/locker");
@@ -73,49 +80,115 @@ export function LockerClient({
     }).then(() => refresh());
   }
 
+  function addInline() {
+    if (!draft.name.trim()) return;
+    startTransition(async () => {
+      const res = await fetch("/api/locker", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: draft.name.trim(),
+          brand: draft.brand.trim(),
+          category: draft.category,
+          weightGrams: Math.max(1, Number(draft.weightGrams) || 1),
+          priceUsd: 0,
+          quantity: 1,
+        }),
+      });
+      if (!res.ok) return;
+      setDraft((prev) => ({ ...prev, name: "", brand: "", weightGrams: 100 }));
+      window.dispatchEvent(new CustomEvent(LOCKER_UPDATED_EVENT));
+      await refresh();
+    });
+  }
+
   return (
-    <div className="grid flex-1 gap-8 lg:grid-cols-[0.85fr_1.35fr]">
-      <aside className="space-y-5">
-        <div>
-          <p className="serif-label text-ink-soft">Gear inventory</p>
-          <p className="mt-1 text-xs text-ink-soft/70">
-            Optional closet — packs can hold items without this
-          </p>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="biz-card px-4 py-3">
+          <div className="text-xs text-ink-soft">Pieces</div>
+          <div className="mt-1 text-2xl font-bold tracking-tight">
+            {stats.itemCount}
+          </div>
         </div>
-
-        <div className="panel-ink p-6">
-          <div className="stat-number text-white">{stats.itemCount}</div>
-          <div className="mt-2 font-semibold">Pieces owned</div>
-          <p className="mt-2 text-sm text-white/65">
-            <Weight grams={stats.totalGrams} /> total ·{" "}
+        <div className="biz-card px-4 py-3">
+          <div className="text-xs text-ink-soft">Total weight</div>
+          <div className="mt-1 text-2xl font-bold tracking-tight">
+            <Weight grams={stats.totalGrams} />
+          </div>
+        </div>
+        <div className="biz-card px-4 py-3">
+          <div className="text-xs text-ink-soft">Kit value</div>
+          <div className="mt-1 text-2xl font-bold tracking-tight">
             {formatUsd(stats.totalValueUsd)}
-          </p>
-          <p className="mt-5 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/85">
-            Use inventory if you want reuse across packs. Or add gear directly
-            on a pack list.
-          </p>
+          </div>
+        </div>
+        <div className="biz-card px-4 py-3">
+          <div className="text-xs text-ink-soft">Categories</div>
+          <div className="mt-1 text-2xl font-bold tracking-tight">
+            {grouped.length}
+          </div>
+        </div>
+      </div>
+
+      <div className="biz-card overflow-hidden">
+        <div className="grid gap-2 border-b border-[var(--line)] p-3 md:grid-cols-[1.4fr_1fr_0.9fr_7rem_auto]">
+          <input
+            className="field field-sm"
+            placeholder="Item name"
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addInline();
+            }}
+          />
+          <input
+            className="field field-sm"
+            placeholder="Brand"
+            value={draft.brand}
+            onChange={(e) => setDraft({ ...draft, brand: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addInline();
+            }}
+          />
+          <select
+            className="field field-sm field-category"
+            value={draft.category}
+            onChange={(e) =>
+              setDraft({ ...draft, category: e.target.value as Category })
+            }
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {CATEGORY_LABELS[cat]}
+              </option>
+            ))}
+          </select>
+          <input
+            className="field field-sm"
+            type="number"
+            min={1}
+            placeholder="g"
+            value={draft.weightGrams}
+            onChange={(e) =>
+              setDraft({ ...draft, weightGrams: Number(e.target.value) })
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addInline();
+            }}
+          />
+          <button
+            type="button"
+            className="pill pill-cta !justify-center !px-3 !py-2"
+            disabled={pending || !draft.name.trim()}
+            onClick={addInline}
+          >
+            <Plus size={16} />
+            Add
+          </button>
         </div>
 
-        <a href="#add-gear" className="pill pill-cta w-fit">
-          <span className="arrow">
-            <ArrowUpRight size={14} />
-          </span>
-          Add gear
-        </a>
-      </aside>
-
-      <section>
-        <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <p className="max-w-md text-sm text-ink-soft">
-            Inventory updates live when you save below. Prefer pack editing?
-            Open a pack and hit Add item.
-          </p>
-          <a href="#packs" className="pill pill-soft w-fit">
-            Build a pack
-          </a>
-        </div>
-
-        <div className="space-y-3">
+        <div className="divide-y divide-[var(--line)]">
           {grouped.map(([category, list]) => {
             const isCollapsed = collapsed[category];
             const grams = list.reduce(
@@ -123,10 +196,10 @@ export function LockerClient({
               0,
             );
             return (
-              <div key={category} className="glass-card-soft overflow-hidden">
+              <div key={category}>
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+                  className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-white/4"
                   onClick={() =>
                     setCollapsed((prev) => ({
                       ...prev,
@@ -134,91 +207,95 @@ export function LockerClient({
                     }))
                   }
                 >
-                  <div>
-                    <div className="font-semibold">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="font-semibold">
                       {CATEGORY_LABELS[category]}
-                    </div>
-                    <div className="text-sm text-ink-soft">
-                      {list.length} item{list.length === 1 ? "" : "s"} ·{" "}
-                      <Weight grams={grams} />
-                    </div>
+                    </span>
+                    <span className="text-xs text-ink-soft">
+                      {list.length} · <Weight grams={grams} />
+                    </span>
                   </div>
                   <ChevronDown
-                    size={18}
-                    className={`transition ${isCollapsed ? "-rotate-90" : ""}`}
+                    size={16}
+                    className={`shrink-0 text-ink-soft transition ${
+                      isCollapsed ? "-rotate-90" : ""
+                    }`}
                   />
                 </button>
-                {!isCollapsed && (
-                  <div className="divide-y divide-black/8 border-t border-black/8">
-                    {list.map((item) => {
-                      const editing = editingId === item.id;
-                      return (
-                        <div key={item.id} className="px-5 py-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <button
-                              type="button"
-                              className="min-w-0 flex-1 text-left"
-                              onClick={() =>
-                                setEditingId(editing ? null : item.id)
+                {!isCollapsed &&
+                  list.map((item) => {
+                    const editing = editingId === item.id;
+                    return (
+                      <div
+                        key={item.id}
+                        className="border-t border-[var(--line)] px-4 py-2"
+                      >
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 text-left"
+                            onClick={() =>
+                              setEditingId(editing ? null : item.id)
+                            }
+                          >
+                            <div className="truncate text-sm font-medium">
+                              {item.name}
+                              {item.quantity > 1 ? ` ×${item.quantity}` : ""}
+                            </div>
+                            <div className="truncate text-xs text-ink-soft">
+                              {item.brand || "Unbranded"}
+                            </div>
+                          </button>
+                          <div className="shrink-0 text-sm font-semibold tabular-nums">
+                            <Weight
+                              grams={item.weightGrams * item.quantity}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="grid h-8 w-8 place-items-center rounded-lg text-[var(--signal-fail)] hover:bg-white/6"
+                            onClick={() => removeItem(item.id)}
+                            aria-label={`Remove ${item.name}`}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        {editing && (
+                          <label className="mt-2 block max-w-xs space-y-1">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                              Move to category
+                            </span>
+                            <select
+                              className="field field-sm field-category"
+                              value={item.category}
+                              onChange={(e) =>
+                                moveCategory(
+                                  item.id,
+                                  e.target.value as Category,
+                                )
                               }
                             >
-                              <div className="truncate font-medium">
-                                {item.name}
-                              </div>
-                              <div className="truncate text-sm text-ink-soft">
-                                {item.brand || "Unbranded"} ·{" "}
-                                <Weight
-                                  grams={item.weightGrams * item.quantity}
-                                />
-                              </div>
-                            </button>
-                            <button
-                              type="button"
-                              className="chip text-[var(--signal-fail)]"
-                              onClick={() => removeItem(item.id)}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                          {editing && (
-                            <label className="mt-3 block space-y-1.5">
-                              <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                                Move to category
-                              </span>
-                              <select
-                                className="field field-sm field-category"
-                                value={item.category}
-                                onChange={(e) =>
-                                  moveCategory(
-                                    item.id,
-                                    e.target.value as Category,
-                                  )
-                                }
-                              >
-                                {CATEGORIES.map((cat) => (
-                                  <option key={cat} value={cat}>
-                                    {CATEGORY_LABELS[cat]}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                              {CATEGORIES.map((cat) => (
+                                <option key={cat} value={cat}>
+                                  {CATEGORY_LABELS[cat]}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             );
           })}
           {grouped.length === 0 && (
-            <div className="panel p-8 text-ink-soft">
-              Inventory is empty — add gear here, import a CSV pack, or create
-              items directly on a pack.
+            <div className="px-4 py-8 text-sm text-ink-soft">
+              Empty inventory — type a name above and hit Add (LighterPack-style).
             </div>
           )}
         </div>
-      </section>
+      </div>
     </div>
   );
 }

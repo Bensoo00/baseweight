@@ -25,9 +25,9 @@ export function CategoryBars({
                 <Weight grams={row.grams} /> · {pct.toFixed(0)}%
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded-md bg-black/8">
+            <div className="h-3 overflow-hidden rounded-md bg-white/8">
               <div
-                className="h-full rounded-md bg-[linear-gradient(90deg,#2f4a3c,#c6f06a)] transition-[width]"
+                className="h-full rounded-md bg-[linear-gradient(90deg,#ff5c39,#2ecc71)] transition-[width]"
                 style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
               />
             </div>

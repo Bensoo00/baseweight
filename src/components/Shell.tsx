@@ -121,7 +121,7 @@ export function Shell({
                 onClick={() => go("dashboard")}
                 className="flex shrink-0 items-center gap-2.5"
               >
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-sm font-bold text-white">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--accent)] text-sm font-bold text-white">
                   Bw
                 </span>
                 <span className="hidden text-lg font-semibold tracking-tight text-ink sm:inline">
@@ -132,7 +132,7 @@ export function Shell({
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
-              <UnitToggle />
+              <UnitToggle dark />
               {primaryAction &&
                 (primaryAction.href ? (
                   <Link href={primaryAction.href} className="pill pill-cta !py-2">
@@ -167,7 +167,7 @@ export function Shell({
                     router.push("/#account");
                   }
                 }}
-                className="hidden rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-ink transition hover:bg-[var(--paper-2)] sm:block"
+                className="hidden rounded-xl border border-white/12 bg-white/6 px-3 py-2 text-sm font-medium text-ink transition hover:bg-white/10 sm:block"
                 title={user ? user.email : "Sign in"}
               >
                 {user ? "Me" : "Sign in"}

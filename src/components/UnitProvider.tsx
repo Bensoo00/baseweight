@@ -85,7 +85,7 @@ export function UnitToggle({ dark = false }: { dark?: boolean }) {
           className={`rounded px-2.5 py-1 transition ${
             unit === option
               ? dark
-                ? "bg-white text-ink"
+                ? "bg-[var(--accent)] text-white"
                 : "bg-ink text-white"
               : dark
                 ? "text-white/70"
