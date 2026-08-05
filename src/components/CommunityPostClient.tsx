@@ -152,7 +152,7 @@ export function CommunityPostClient({
                       className="category-section overflow-hidden"
                     >
                       <div
-                        className="flex items-center justify-between gap-3 px-4 py-2.5"
+                        className="flex items-center justify-between gap-3 px-3 py-1.5"
                         style={{
                           background:
                             DEFAULT_CATEGORY_COLORS[cat as Category] ??
@@ -160,10 +160,10 @@ export function CommunityPostClient({
                           color: "#f4f1ea",
                         }}
                       >
-                        <div className="font-semibold">
+                        <div className="text-sm font-semibold">
                           {CATEGORY_LABELS[cat]}
                         </div>
-                        <div className="text-sm opacity-85">
+                        <div className="text-xs opacity-85">
                           {list.length} · <Weight grams={grams} />
                         </div>
                       </div>
@@ -171,24 +171,24 @@ export function CommunityPostClient({
                         {list.map((item) => (
                           <div
                             key={item.id}
-                            className="flex items-center justify-between gap-4 px-4 py-2.5"
+                            className="flex items-center justify-between gap-3 px-3 py-1.5"
                           >
-                            <div>
-                              <div className="font-semibold">
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-medium leading-tight">
                                 {item.name}
                                 {item.quantity > 1 && (
-                                  <span className="ml-2 rounded-md bg-white/10 px-2 py-0.5 text-xs">
+                                  <span className="ml-1.5 rounded-md bg-white/10 px-1.5 py-0.5 text-[10px]">
                                     ×{item.quantity}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-sm text-ink-soft">
+                              <div className="truncate text-xs leading-tight text-ink-soft">
                                 {item.brand || "Unbranded"}
                                 {item.worn ? " · Worn" : ""}
                                 {item.consumable ? " · Consumable" : ""}
                               </div>
                             </div>
-                            <div className="text-right font-semibold tabular-nums">
+                            <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
                               <Weight
                                 grams={item.weightGrams * item.quantity}
                               />

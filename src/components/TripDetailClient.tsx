@@ -864,7 +864,7 @@ export function TripDetailClient({
               return (
                 <div key={category} className="category-section overflow-hidden">
                   <div
-                    className="relative flex items-center justify-between gap-3 px-4 py-3.5 md:px-5"
+                    className="relative flex items-center justify-between gap-3 px-3 py-2 md:px-4"
                     style={{ background: headerColor, color: headerInk }}
                   >
                     <button
@@ -878,11 +878,11 @@ export function TripDetailClient({
                       }
                     >
                       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                        <span className="text-lg font-semibold tracking-tight md:text-xl">
+                        <span className="text-[15px] font-semibold tracking-tight md:text-base">
                           {CATEGORY_LABELS[category]}
                         </span>
                         <span
-                          className="text-sm tabular-nums"
+                          className="text-xs tabular-nums"
                           style={{ opacity: 0.88 }}
                         >
                           {list.length} item{list.length === 1 ? "" : "s"} ·{" "}
@@ -896,7 +896,7 @@ export function TripDetailClient({
                     >
                       <button
                         type="button"
-                        className="grid h-9 w-9 place-items-center rounded-lg transition hover:bg-black/15"
+                        className="grid h-7 w-7 place-items-center rounded-md transition hover:bg-black/15"
                         style={{ color: headerInk }}
                         aria-label={`Change ${CATEGORY_LABELS[category]} color`}
                         onClick={(e) => {
@@ -906,11 +906,11 @@ export function TripDetailClient({
                           );
                         }}
                       >
-                        <Palette size={16} />
+                        <Palette size={14} />
                       </button>
                       <button
                         type="button"
-                        className="grid h-9 w-9 place-items-center rounded-lg transition hover:bg-black/15"
+                        className="grid h-7 w-7 place-items-center rounded-md transition hover:bg-black/15"
                         style={{ color: headerInk }}
                         aria-label={
                           isCollapsed ? "Expand category" : "Collapse category"
@@ -923,7 +923,7 @@ export function TripDetailClient({
                         }
                       >
                         <ChevronDown
-                          size={18}
+                          size={16}
                           className={`transition ${
                             isCollapsed ? "-rotate-90" : ""
                           }`}
@@ -986,49 +986,49 @@ export function TripDetailClient({
                       {list.map((item) => {
                         const open = openId === item.id;
                         return (
-                          <div key={item.id} className="px-4 py-3 md:px-5">
+                          <div key={item.id} className="px-3 py-1.5 md:px-4">
                             <button
                               type="button"
-                              className="flex w-full items-center gap-3 text-left md:gap-4"
+                              className="flex w-full items-center gap-2.5 text-left"
                               onClick={() =>
                                 setOpenId(open ? null : item.id)
                               }
                             >
                               <div
-                                className="h-10 w-1.5 shrink-0 rounded-full"
+                                className="h-7 w-1 shrink-0 rounded-full"
                                 style={{ background: headerColor }}
                                 aria-hidden
                               />
                               <div className="min-w-0 flex-1">
-                                <div className="text-[15px] font-medium leading-snug md:text-base">
+                                <div className="truncate text-sm font-medium leading-tight">
                                   {item.name}
                                   {item.quantity > 1 && (
-                                    <span className="ml-1.5 rounded-md bg-white/10 px-1.5 py-0.5 text-[11px] font-medium">
+                                    <span className="ml-1.5 rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-medium">
                                       ×{item.quantity}
                                     </span>
                                   )}
                                 </div>
-                                <div className="mt-0.5 text-sm text-ink-soft">
+                                <div className="truncate text-xs leading-tight text-ink-soft">
                                   {item.brand || "Unbranded"}
                                   {item.worn ? " · Worn" : ""}
                                   {item.consumable ? " · Cons." : ""}
                                   {item.maybe ? " · Maybe" : ""}
                                 </div>
                               </div>
-                              <div className="shrink-0 text-right text-[15px] font-semibold tabular-nums md:text-base">
+                              <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
                                 <Weight
                                   grams={item.weightGrams * item.quantity}
                                 />
                               </div>
-                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/6">
+                              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/6">
                                 <ArrowUpRight
-                                  size={14}
+                                  size={12}
                                   className={`transition ${open ? "rotate-45" : ""}`}
                                 />
                               </span>
                             </button>
                             {open && (
-                              <div className="mt-3 space-y-3 rounded-xl border border-[var(--line)] bg-white/5 p-4 md:max-w-2xl">
+                              <div className="mt-2 space-y-3 rounded-xl border border-[var(--line)] bg-white/5 p-3 md:max-w-2xl">
                                 <label className="block space-y-1">
                                   <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
                                     Category

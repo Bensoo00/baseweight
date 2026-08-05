@@ -179,7 +179,7 @@ export default async function SharePage({ params }: Props) {
                         return (
                           <div key={cat} className="category-section">
                             <div
-                              className="flex items-center justify-between gap-2 px-4 py-2.5"
+                              className="flex items-center justify-between gap-2 px-3 py-1.5"
                               style={{ background: accent, color: "#f4f1ea" }}
                             >
                               <div className="text-sm font-semibold">
@@ -193,10 +193,10 @@ export default async function SharePage({ params }: Props) {
                               {list.map((item) => (
                                 <div
                                   key={item.id}
-                                  className="flex items-center justify-between gap-3 px-4 py-2.5"
+                                  className="flex items-center justify-between gap-3 px-3 py-1.5"
                                 >
                                   <div className="min-w-0">
-                                    <div className="truncate text-sm font-medium">
+                                    <div className="truncate text-sm font-medium leading-tight">
                                       {item.name}
                                       {item.quantity > 1 && (
                                         <span className="ml-1.5 rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-medium">
@@ -204,7 +204,7 @@ export default async function SharePage({ params }: Props) {
                                         </span>
                                       )}
                                     </div>
-                                    <div className="truncate text-xs text-ink-soft">
+                                    <div className="truncate text-xs leading-tight text-ink-soft">
                                       {item.brand || "Unbranded"}
                                       {item.worn ? " · Worn" : ""}
                                       {item.consumable ? " · Cons." : ""}
@@ -212,14 +212,14 @@ export default async function SharePage({ params }: Props) {
                                     </div>
                                   </div>
                                   <div className="shrink-0 text-right">
-                                    <div className="text-sm font-semibold tabular-nums">
+                                    <div className="text-sm font-semibold tabular-nums leading-tight">
                                       <Weight
                                         grams={
                                           item.weightGrams * item.quantity
                                         }
                                       />
                                     </div>
-                                    <div className="text-xs text-ink-soft">
+                                    <div className="text-[11px] text-ink-soft">
                                       {formatUsd(item.priceUsd)}
                                     </div>
                                   </div>
