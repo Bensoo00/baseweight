@@ -71,9 +71,7 @@ export function TripDetailClient({
   const [published, setPublished] = useState(false);
   const [authorName, setAuthorName] = useState("");
   const [postBody, setPostBody] = useState("");
-  const [openId, setOpenId] = useState<number | null>(
-    initial.items[0]?.id ?? null,
-  );
+  const [openId, setOpenId] = useState<number | null>(null);
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>(
     {},
   );
