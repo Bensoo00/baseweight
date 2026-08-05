@@ -71,8 +71,8 @@ export function UnitToggle({ dark = false }: { dark?: boolean }) {
   const { unit, setUnit } = useUnit();
   return (
     <div
-      className={`inline-flex rounded-full border border-black/10 p-0.5 text-xs font-semibold ${
-        dark ? "bg-white/10" : "bg-white/90"
+      className={`inline-flex rounded-md border border-[var(--line)] p-0.5 text-xs font-semibold ${
+        dark ? "border-white/20 bg-white/10" : "bg-white"
       }`}
       role="group"
       aria-label="Weight units"
@@ -82,7 +82,7 @@ export function UnitToggle({ dark = false }: { dark?: boolean }) {
           key={option}
           type="button"
           onClick={() => setUnit(option)}
-          className={`rounded-full px-2.5 py-1 transition ${
+          className={`rounded px-2.5 py-1 transition ${
             unit === option
               ? dark
                 ? "bg-white text-ink"

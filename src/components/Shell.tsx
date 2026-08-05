@@ -105,10 +105,10 @@ export function Shell({
               onClick={() => go("dashboard")}
               className="flex min-w-0 items-center gap-2.5"
             >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[rgba(16,32,24,0.88)] text-xs font-semibold text-lichen">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-ink text-xs font-semibold text-white">
                 Bw
               </span>
-              <span className="truncate font-[family-name:var(--font-fraunces)] text-xl tracking-tight text-ink">
+              <span className="truncate text-lg font-semibold tracking-tight text-ink">
                 Baseweight
               </span>
             </button>
@@ -130,7 +130,7 @@ export function Shell({
               <button
                 type="button"
                 onClick={() => go(user ? "dashboard" : "account")}
-                className="hidden max-w-[9rem] truncate rounded-full border border-black/10 bg-white/90 px-3 py-1.5 text-sm text-ink transition hover:bg-white sm:block"
+                className="hidden max-w-[9rem] truncate rounded-md border border-[var(--line)] bg-white px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-[var(--paper-2)] sm:block"
                 title={user ? user.email : "Sign in"}
               >
                 {user ? user.name : "Sign in"}

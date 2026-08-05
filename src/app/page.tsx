@@ -76,11 +76,13 @@ export default async function HomePage() {
         <div className="topo-hero absolute inset-0" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
         <div className="relative z-10 px-6 pb-12 pt-20 text-center md:px-10">
-          <p className="serif-label animate-rise text-white/80">Baseweight</p>
-          <h1 className="animate-rise animate-rise-delay-1 mx-auto mt-4 max-w-3xl font-[family-name:var(--font-fraunces)] text-4xl font-semibold tracking-tight md:text-6xl">
-            Pack lighter. Learn every trip.
+          <h1 className="animate-rise text-5xl font-bold tracking-tight text-white md:text-7xl">
+            Baseweight
           </h1>
-          <p className="animate-rise animate-rise-delay-2 mx-auto mt-5 max-w-lg text-base text-white/80 md:text-lg">
+          <p className="animate-rise animate-rise-delay-1 mx-auto mt-4 max-w-2xl text-lg font-medium text-white/90 md:text-2xl">
+            Pack lighter. Learn every trip.
+          </p>
+          <p className="animate-rise animate-rise-delay-2 mx-auto mt-4 max-w-lg text-sm text-white/70 md:text-base">
             Build packs, assign trips when you need them, and journal what
             actually worked on trail.
           </p>

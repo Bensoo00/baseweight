@@ -585,34 +585,34 @@ export function TripDetailClient({
           <p className="mt-1 text-sm text-white/65">
             Target {format(detail.trip.targetBaseWeightGrams)}
           </p>
-          <div className="mt-3 h-2 max-w-md overflow-hidden rounded-full bg-white/15">
+          <div className="mt-3 h-1.5 max-w-md overflow-hidden rounded bg-white/15">
             <div
-              className="h-full rounded-full bg-[var(--lichen)]"
+              className="h-full rounded bg-white"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:gap-3">
-          <div className="rounded-2xl bg-white/10 px-3 py-2.5">
-            <div className="text-xs text-white/60">Pack</div>
+          <div className="rounded-lg bg-white/8 px-3 py-2.5">
+            <div className="text-xs text-white/55">Pack</div>
             <div className="mt-0.5 text-base font-semibold tabular-nums">
               <Weight grams={detail.stats.packWeightGrams} />
             </div>
           </div>
-          <div className="rounded-2xl bg-white/10 px-3 py-2.5">
-            <div className="text-xs text-white/60">Worn</div>
+          <div className="rounded-lg bg-white/8 px-3 py-2.5">
+            <div className="text-xs text-white/55">Worn</div>
             <div className="mt-0.5 text-base font-semibold tabular-nums">
               <Weight grams={detail.stats.wornWeightGrams} />
             </div>
           </div>
-          <div className="rounded-2xl bg-white/10 px-3 py-2.5">
-            <div className="text-xs text-white/60">Consumable</div>
+          <div className="rounded-lg bg-white/8 px-3 py-2.5">
+            <div className="text-xs text-white/55">Consumable</div>
             <div className="mt-0.5 text-base font-semibold tabular-nums">
               <Weight grams={detail.stats.consumableWeightGrams} />
             </div>
           </div>
-          <div className="rounded-2xl bg-white/10 px-3 py-2.5">
-            <div className="text-xs text-white/60">Maybe</div>
+          <div className="rounded-lg bg-white/8 px-3 py-2.5">
+            <div className="text-xs text-white/55">Maybe</div>
             <div className="mt-0.5 text-base font-semibold tabular-nums">
               <Weight grams={detail.stats.maybeWeightGrams} />
             </div>
