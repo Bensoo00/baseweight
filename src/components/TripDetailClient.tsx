@@ -576,43 +576,43 @@ export function TripDetailClient({
         </label>
       </div>
 
-      <div className="panel-ink flex flex-col gap-5 p-5 md:flex-row md:items-end md:justify-between md:p-6">
+      <div className="biz-card flex flex-col gap-5 p-5 md:flex-row md:items-end md:justify-between md:p-6">
         <div className="min-w-0">
-          <div className="stat-number text-[var(--paper)]">
+          <div className="stat-number">
             <Weight grams={detail.stats.baseWeightGrams} />
           </div>
           <div className="mt-1 font-semibold">Base weight</div>
-          <p className="mt-1 text-sm text-white/65">
+          <p className="mt-1 text-sm text-ink-soft">
             Target {format(detail.trip.targetBaseWeightGrams)}
           </p>
-          <div className="mt-3 h-1.5 max-w-md overflow-hidden rounded bg-white/15">
+          <div className="mt-3 h-1.5 max-w-md overflow-hidden rounded bg-white/10">
             <div
-              className="h-full rounded bg-white"
+              className="h-full rounded bg-[var(--accent)]"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:gap-3">
-          <div className="rounded-lg bg-white/8 px-3 py-2.5">
-            <div className="text-xs text-white/55">Pack</div>
+          <div className="rounded-xl bg-white/6 px-3 py-2.5">
+            <div className="text-xs text-ink-soft">Pack</div>
             <div className="mt-0.5 text-base font-semibold tabular-nums">
               <Weight grams={detail.stats.packWeightGrams} />
             </div>
           </div>
-          <div className="rounded-lg bg-white/8 px-3 py-2.5">
-            <div className="text-xs text-white/55">Worn</div>
+          <div className="rounded-xl bg-white/6 px-3 py-2.5">
+            <div className="text-xs text-ink-soft">Worn</div>
             <div className="mt-0.5 text-base font-semibold tabular-nums">
               <Weight grams={detail.stats.wornWeightGrams} />
             </div>
           </div>
-          <div className="rounded-lg bg-white/8 px-3 py-2.5">
-            <div className="text-xs text-white/55">Consumable</div>
+          <div className="rounded-xl bg-white/6 px-3 py-2.5">
+            <div className="text-xs text-ink-soft">Consumable</div>
             <div className="mt-0.5 text-base font-semibold tabular-nums">
               <Weight grams={detail.stats.consumableWeightGrams} />
             </div>
           </div>
-          <div className="rounded-lg bg-white/8 px-3 py-2.5">
-            <div className="text-xs text-white/55">Maybe</div>
+          <div className="rounded-xl bg-white/6 px-3 py-2.5">
+            <div className="text-xs text-ink-soft">Maybe</div>
             <div className="mt-0.5 text-base font-semibold tabular-nums">
               <Weight grams={detail.stats.maybeWeightGrams} />
             </div>
@@ -802,7 +802,7 @@ export function TripDetailClient({
                         <button
                           key={item.id}
                           type="button"
-                          className="flex items-center justify-between rounded-xl border border-black/8 px-3 py-2 text-left text-sm"
+                          className="flex items-center justify-between rounded-xl border border-[var(--line)] bg-white/5 px-3 py-2 text-left text-sm"
                           onClick={() =>
                             setSelected((prev) =>
                               on
@@ -820,8 +820,8 @@ export function TripDetailClient({
                           <span
                             className={`grid h-7 w-7 place-items-center rounded-full ${
                               on
-                                ? "bg-[var(--lichen)] text-[var(--lichen-ink)]"
-                                : "bg-black/5"
+                                ? "bg-[var(--accent)] text-white"
+                                : "bg-white/8"
                             }`}
                           >
                             {on ? <Check size={14} /> : null}
@@ -931,7 +931,7 @@ export function TripDetailClient({
                       </button>
                       {colorOpen && (
                         <div
-                          className="absolute right-0 top-full z-20 mt-2 w-[188px] rounded-xl border border-black/10 bg-white p-2.5 shadow-lg"
+                          className="absolute right-0 top-full z-20 mt-2 w-[188px] rounded-xl border border-[var(--line)] bg-[rgba(22,24,30,0.98)] p-2.5 shadow-lg"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
@@ -942,7 +942,7 @@ export function TripDetailClient({
                               <button
                                 key={swatch}
                                 type="button"
-                                className="h-8 w-full rounded-md border border-black/10 transition hover:scale-105"
+                                className="h-8 w-full rounded-md border border-[var(--line)] transition hover:scale-105"
                                 style={{ background: swatch }}
                                 aria-label={`Set color ${swatch}`}
                                 onClick={() => {
@@ -957,7 +957,7 @@ export function TripDetailClient({
                             <input
                               type="color"
                               value={headerColor}
-                              className="h-8 w-full cursor-pointer rounded border border-black/10 bg-transparent"
+                                className="h-8 w-full cursor-pointer rounded border border-[var(--line)] bg-transparent"
                               onChange={(e) =>
                                 setCategoryColor(category, e.target.value)
                               }
@@ -982,11 +982,11 @@ export function TripDetailClient({
                   </div>
 
                   {!isCollapsed && (
-                    <div className="divide-y divide-black/8 bg-[rgba(255,255,255,0.9)]">
+                    <div className="divide-y divide-[var(--line)] bg-[rgba(22,24,30,0.45)]">
                       {list.map((item) => {
                         const open = openId === item.id;
                         return (
-                          <div key={item.id} className="px-4 py-3.5 md:px-5">
+                          <div key={item.id} className="px-4 py-3 md:px-5">
                             <button
                               type="button"
                               className="flex w-full items-center gap-3 text-left md:gap-4"
@@ -995,7 +995,7 @@ export function TripDetailClient({
                               }
                             >
                               <div
-                                className="h-11 w-1.5 shrink-0 rounded-full"
+                                className="h-10 w-1.5 shrink-0 rounded-full"
                                 style={{ background: headerColor }}
                                 aria-hidden
                               />
@@ -1003,7 +1003,7 @@ export function TripDetailClient({
                                 <div className="text-[15px] font-medium leading-snug md:text-base">
                                   {item.name}
                                   {item.quantity > 1 && (
-                                    <span className="ml-1.5 rounded-full bg-black/8 px-1.5 py-0.5 text-[11px] font-medium">
+                                    <span className="ml-1.5 rounded-md bg-white/10 px-1.5 py-0.5 text-[11px] font-medium">
                                       ×{item.quantity}
                                     </span>
                                   )}
@@ -1020,7 +1020,7 @@ export function TripDetailClient({
                                   grams={item.weightGrams * item.quantity}
                                 />
                               </div>
-                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-black/10 bg-white">
+                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/6">
                                 <ArrowUpRight
                                   size={14}
                                   className={`transition ${open ? "rotate-45" : ""}`}
@@ -1028,7 +1028,7 @@ export function TripDetailClient({
                               </span>
                             </button>
                             {open && (
-                              <div className="mt-3 space-y-3 rounded-xl bg-[#e8eee6]/95 p-4 md:max-w-2xl">
+                              <div className="mt-3 space-y-3 rounded-xl border border-[var(--line)] bg-white/5 p-4 md:max-w-2xl">
                                 <label className="block space-y-1">
                                   <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
                                     Category

@@ -27,7 +27,7 @@ export function GapPanel({
         {checks.map((check) => (
           <div
             key={check.id}
-            className="flex items-start justify-between gap-3 rounded-2xl border border-black/8 bg-white/70 px-4 py-3"
+            className="flex items-start justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/5 px-4 py-3"
           >
             <div>
               <div className="font-semibold">{check.title}</div>

@@ -8,7 +8,7 @@ import type { CommunityComment, CommunityPost } from "@/db/schema";
 import type { TripDetail } from "@/lib/trips";
 import { CategoryBars } from "@/components/CategoryBars";
 import { Weight } from "@/components/UnitProvider";
-import { CATEGORIES, CATEGORY_LABELS, type Category } from "@/lib/units";
+import { CATEGORIES, CATEGORY_LABELS, DEFAULT_CATEGORY_COLORS, type Category } from "@/lib/units";
 
 export function CommunityPostClient({
   post,
@@ -149,27 +149,35 @@ export function CommunityPostClient({
                   return (
                     <div
                       key={cat}
-                      className="overflow-hidden rounded-[1.25rem] border border-black/10 bg-white/90"
+                      className="category-section overflow-hidden"
                     >
-                      <div className="flex items-center justify-between gap-3 px-5 py-3">
+                      <div
+                        className="flex items-center justify-between gap-3 px-4 py-2.5"
+                        style={{
+                          background:
+                            DEFAULT_CATEGORY_COLORS[cat as Category] ??
+                            "#4f5c54",
+                          color: "#f4f1ea",
+                        }}
+                      >
                         <div className="font-semibold">
                           {CATEGORY_LABELS[cat]}
                         </div>
-                        <div className="text-sm text-ink-soft">
+                        <div className="text-sm opacity-85">
                           {list.length} · <Weight grams={grams} />
                         </div>
                       </div>
-                      <div className="divide-y divide-black/8 border-t border-black/8">
+                      <div className="divide-y divide-[var(--line)] bg-[rgba(22,24,30,0.45)]">
                         {list.map((item) => (
                           <div
                             key={item.id}
-                            className="flex items-center justify-between gap-4 px-5 py-3"
+                            className="flex items-center justify-between gap-4 px-4 py-2.5"
                           >
                             <div>
                               <div className="font-semibold">
                                 {item.name}
                                 {item.quantity > 1 && (
-                                  <span className="ml-2 rounded-full bg-black/8 px-2 py-0.5 text-xs">
+                                  <span className="ml-2 rounded-md bg-white/10 px-2 py-0.5 text-xs">
                                     ×{item.quantity}
                                   </span>
                                 )}
@@ -222,7 +230,7 @@ export function CommunityPostClient({
                 <p className="text-sm text-ink-soft">No comments yet — start the shakedown.</p>
               )}
             </div>
-            <div className="mt-5 space-y-3 border-t border-black/8 pt-4">
+            <div className="mt-5 space-y-3 border-t border-[var(--line)] pt-4">
               <input
                 className="field"
                 placeholder="Display name"

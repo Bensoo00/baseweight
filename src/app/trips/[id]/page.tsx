@@ -33,15 +33,13 @@ export default async function TripDetailPage({ params }: Props) {
   if (!detail) notFound();
 
   return (
-    <Shell user={user}>
+    <Shell user={user} activeTab="packs">
       <div className="dash-panel">
-        <div className="biz-card p-4 md:p-6">
-          <TripDetailClient
-            initial={detail}
-            locker={locker}
-            trails={trails}
-          />
-        </div>
+        <TripDetailClient
+          initial={detail}
+          locker={locker}
+          trails={trails}
+        />
       </div>
     </Shell>
   );
