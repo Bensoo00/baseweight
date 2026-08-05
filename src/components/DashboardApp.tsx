@@ -5,9 +5,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   ArrowUpRight,
-  Calendar,
-  MessageSquare,
-  Package,
 } from "lucide-react";
 import { AuthGate, AuthPanel } from "@/components/AuthPanel";
 import { CommunityFeed } from "@/components/CommunityFeed";
@@ -20,7 +17,7 @@ import { Weight, useUnit } from "@/components/UnitProvider";
 import type { JournalEntryDetail } from "@/lib/journal";
 import type { CommunityPostWithMeta } from "@/lib/community";
 import type { PackStats } from "@/lib/pack-stats";
-import { CATEGORY_LABELS, formatUsd, type Category } from "@/lib/units";
+import { CATEGORY_LABELS, type Category } from "@/lib/units";
 import type { LockerItem, PublicUser, Trail } from "@/db/schema";
 
 type PackRow = {
@@ -57,7 +54,6 @@ type Props = {
 
 export function DashboardApp(props: Props) {
   const [tab, setTab] = useState<DashTabId>("dashboard");
-  const mainPack = props.packs[0] ?? null;
 
   const primaryAction = useMemo(() => {
     if (tab === "collection") return null;
@@ -82,8 +78,6 @@ export function DashboardApp(props: Props) {
           <DashboardHome
             user={props.user}
             packs={props.packs}
-            lockerSummary={props.lockerSummary}
-            mainPack={mainPack}
             journalCount={props.journal.length}
             onOpen={setTab}
           />
@@ -198,69 +192,49 @@ function Panel({
 function DashboardHome({
   user,
   packs,
-  lockerSummary,
-  mainPack,
   journalCount,
   onOpen,
 }: {
   user: PublicUser | null;
   packs: PackRow[];
-  lockerSummary: {
-    itemCount: number;
-    totalGrams: number;
-    totalValueUsd: number;
-  };
-  mainPack: PackRow | null;
   journalCount: number;
   onOpen: (id: DashTabId) => void;
 }) {
   const { format } = useUnit();
-  const targetGrams = mainPack?.targetBaseWeightGrams || 4536;
-  const targetProgress = mainPack
-    ? Math.min(
-        100,
-        Math.round((mainPack.stats.baseWeightGrams / targetGrams) * 100),
-      )
-    : 0;
-  const overTarget = mainPack
-    ? mainPack.stats.baseWeightGrams > targetGrams
-    : false;
-
-  const heaviest = [...(mainPack?.stats.categoryBreakdown ?? [])]
-    .sort((a, b) => b.grams - a.grams)
-    .slice(0, 5);
-
-  const maxCatGrams = heaviest[0]?.grams || 1;
-  const tripReadyCount = packs.filter(
-    (p) => Boolean(p.trail) || p.nights > 0,
-  ).length;
-  const issueCount = packs.reduce(
-    (sum, p) => sum + p.failCount + p.warnCount,
-    0,
+  const [activePackId, setActivePackId] = useState<number | null>(
+    packs[0]?.id ?? null,
   );
 
-  const boardColumns = [
-    {
-      title: "Light packs",
-      items: packs.filter((p) => p.stats.baseWeightGrams < 4536).slice(0, 4),
-    },
-    {
-      title: "Trip-ready",
-      items: packs
-        .filter((p) => Boolean(p.trail) || p.nights > 0)
-        .slice(0, 4),
-    },
-    {
-      title: "Needs work",
-      items: packs
-        .filter((p) => p.failCount > 0 || p.warnCount > 0)
-        .slice(0, 4),
-    },
-    {
-      title: "All packs",
-      items: packs.slice(0, 4),
-    },
-  ];
+  const activePack =
+    packs.find((p) => p.id === activePackId) ?? packs[0] ?? null;
+
+  const targetGrams = activePack?.targetBaseWeightGrams || 4536;
+  const deltaGrams = activePack
+    ? activePack.stats.baseWeightGrams - targetGrams
+    : 0;
+  const overTarget = deltaGrams > 0;
+  const targetProgress = activePack
+    ? Math.min(
+        100,
+        Math.round((activePack.stats.baseWeightGrams / targetGrams) * 100),
+      )
+    : 0;
+
+  const heaviestCats = [...(activePack?.stats.categoryBreakdown ?? [])]
+    .sort((a, b) => b.grams - a.grams)
+    .slice(0, 5);
+  const maxCatGrams = heaviestCats[0]?.grams || 1;
+
+  const cutList = (activePack?.stats.heaviestItems ?? []).slice(0, 8);
+  const packGapCount = activePack
+    ? activePack.failCount + activePack.warnCount
+    : 0;
+  const hasTrip =
+    Boolean(activePack?.trail) || (activePack?.nights ?? 0) > 0;
+
+  const packsByLightest = [...packs].sort(
+    (a, b) => a.stats.baseWeightGrams - b.stats.baseWeightGrams,
+  );
 
   return (
     <div className="space-y-6">
@@ -269,94 +243,216 @@ function DashboardHome({
           Dashboard
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Snapshot of packs, kit, and what still needs attention.
+          Base weight first — cuts, targets, and trip gaps for the pack you’re
+          dialing.
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <button
-          type="button"
-          onClick={() => onOpen("packs")}
-          className="biz-card px-4 py-3.5 text-left transition hover:border-white/20"
-        >
-          <div className="text-xs text-ink-soft">Main pack base</div>
-          <div className="mt-1.5 text-2xl font-bold tracking-tight">
-            {mainPack ? (
-              <Weight grams={mainPack.stats.baseWeightGrams} />
-            ) : (
-              "—"
-            )}
+      {/* Active pack hero */}
+      <div className="biz-card p-5 md:p-6">
+        {packs.length > 0 ? (
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium uppercase tracking-wide text-ink-soft">
+                  Active pack
+                </span>
+                <select
+                  className="field field-sm max-w-md"
+                  value={activePack?.id ?? ""}
+                  onChange={(e) => setActivePackId(Number(e.target.value))}
+                >
+                  {packs.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {p.trail ? ` · ${p.trail.name}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="mt-4 stat-number">
+                <Weight grams={activePack!.stats.baseWeightGrams} />
+              </div>
+              <p className="mt-1 text-sm text-ink-soft">Base weight</p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span className="text-ink-soft">
+                  Target {format(targetGrams)}
+                </span>
+                <span className={overTarget ? "text-[var(--accent)]" : "trend-up"}>
+                  {overTarget ? (
+                    <>
+                      <Weight grams={deltaGrams} /> over
+                    </>
+                  ) : (
+                    <>
+                      <Weight grams={Math.abs(deltaGrams)} /> under
+                    </>
+                  )}
+                </span>
+              </div>
+              <div className="mt-3 h-1.5 max-w-md overflow-hidden rounded bg-white/10">
+                <div
+                  className="h-full rounded"
+                  style={{
+                    width: `${Math.max(4, targetProgress)}%`,
+                    background: overTarget
+                      ? "var(--accent)"
+                      : "var(--success)",
+                  }}
+                />
+              </div>
+            </div>
+            <Link
+              href={`/trips/${activePack!.id}`}
+              className="pill pill-cta w-fit"
+            >
+              Open pack
+              <ArrowRight size={14} />
+            </Link>
           </div>
-          <div className="mt-1 truncate text-xs text-ink-soft">
-            {mainPack?.name ?? "No pack yet"}
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpen("packs")}
-          className="biz-card px-4 py-3.5 text-left transition hover:border-white/20"
-        >
-          <div className="text-xs text-ink-soft">Packs</div>
-          <div className="mt-1.5 text-2xl font-bold tracking-tight">
-            {packs.length}
-          </div>
-          <div className="mt-1 text-xs trend-up">
-            {tripReadyCount} trip-ready
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpen("collection")}
-          className="biz-card px-4 py-3.5 text-left transition hover:border-white/20"
-        >
-          <div className="text-xs text-ink-soft">Kit value</div>
-          <div className="mt-1.5 text-2xl font-bold tracking-tight">
-            {formatUsd(lockerSummary.totalValueUsd)}
-          </div>
-          <div className="mt-1 text-xs text-ink-soft">
-            {lockerSummary.itemCount} pieces
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpen("trips")}
-          className="biz-card px-4 py-3.5 text-left transition hover:border-white/20"
-        >
-          <div className="text-xs text-ink-soft">Open checks</div>
-          <div className="mt-1.5 text-2xl font-bold tracking-tight">
-            {issueCount}
-          </div>
-          <div className="mt-1 text-xs text-ink-soft">
-            {journalCount} journal {journalCount === 1 ? "entry" : "entries"}
-          </div>
-        </button>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-12">
-        <div className="biz-card p-5 lg:col-span-7">
-          <div className="flex items-start justify-between gap-3">
+        ) : (
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-medium">Heaviest categories</p>
-              <p className="mt-0.5 text-xs text-ink-soft">
-                {mainPack
-                  ? `Where weight sits in ${mainPack.name}`
-                  : "Create a pack to see category weights"}
+              <p className="text-lg font-semibold">No pack yet</p>
+              <p className="mt-1 text-sm text-ink-soft">
+                Create a list to track base weight, cuts, and trip checks.
               </p>
             </div>
             <button
               type="button"
-              className="text-ink-soft hover:text-ink"
+              className="pill pill-cta w-fit"
               onClick={() => onOpen("packs")}
-              aria-label="Open packs"
             >
-              <ArrowUpRight size={18} />
+              New pack
+              <ArrowRight size={14} />
             </button>
           </div>
-          <div className="mt-5 space-y-3">
-            {heaviest.length === 0 && (
+        )}
+      </div>
+
+      {/* UL KPI strip */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="biz-card px-4 py-3.5">
+          <div className="text-xs text-ink-soft">Base weight</div>
+          <div className="mt-1.5 text-2xl font-bold tracking-tight">
+            {activePack ? (
+              <Weight grams={activePack.stats.baseWeightGrams} />
+            ) : (
+              "—"
+            )}
+          </div>
+          <div className="mt-1 text-xs text-ink-soft">
+            Not worn · not consumable
+          </div>
+        </div>
+        <div className="biz-card px-4 py-3.5">
+          <div className="text-xs text-ink-soft">Pack weight</div>
+          <div className="mt-1.5 text-2xl font-bold tracking-tight">
+            {activePack ? (
+              <Weight grams={activePack.stats.packWeightGrams} />
+            ) : (
+              "—"
+            )}
+          </div>
+          <div className="mt-1 text-xs text-ink-soft">Total − worn</div>
+        </div>
+        <div className="biz-card px-4 py-3.5">
+          <div className="text-xs text-ink-soft">Skin-out</div>
+          <div className="mt-1.5 text-2xl font-bold tracking-tight">
+            {activePack ? (
+              <Weight grams={activePack.stats.skinOutWeightGrams} />
+            ) : (
+              "—"
+            )}
+          </div>
+          <div className="mt-1 text-xs text-ink-soft">Pack + worn</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onOpen(hasTrip ? "trips" : "packs")}
+          className="biz-card px-4 py-3.5 text-left transition hover:border-white/20"
+        >
+          <div className="text-xs text-ink-soft">Gap issues</div>
+          <div className="mt-1.5 text-2xl font-bold tracking-tight">
+            {activePack
+              ? packGapCount === 0
+                ? "Clear"
+                : packGapCount
+              : "—"}
+          </div>
+          <div className="mt-1 text-xs text-ink-soft">
+            {activePack
+              ? `${activePack.failCount}F · ${activePack.warnCount}W`
+              : "No pack"}
+          </div>
+        </button>
+      </div>
+
+      {/* Weight accounting */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="biz-card p-5">
+          <p className="text-sm font-medium">Worn / consumable / maybe</p>
+          <p className="mt-0.5 text-xs text-ink-soft">
+            Kept out of base so the number stays honest
+          </p>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-xl bg-white/5 px-3 py-3">
+              <div className="text-[11px] text-ink-soft">Worn</div>
+              <div className="mt-1 text-lg font-bold tabular-nums">
+                {activePack ? (
+                  <Weight grams={activePack.stats.wornWeightGrams} />
+                ) : (
+                  "—"
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl bg-white/5 px-3 py-3">
+              <div className="text-[11px] text-ink-soft">Consumable</div>
+              <div className="mt-1 text-lg font-bold tabular-nums">
+                {activePack ? (
+                  <Weight grams={activePack.stats.consumableWeightGrams} />
+                ) : (
+                  "—"
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl bg-white/5 px-3 py-3">
+              <div className="text-[11px] text-ink-soft">Maybe</div>
+              <div className="mt-1 text-lg font-bold tabular-nums">
+                {activePack ? (
+                  <Weight grams={activePack.stats.maybeWeightGrams} />
+                ) : (
+                  "—"
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="biz-card p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Heaviest categories</p>
+              <p className="mt-0.5 text-xs text-ink-soft">
+                Base-weight categories
+                {activePack ? ` · ${activePack.name}` : ""}
+              </p>
+            </div>
+            {activePack && (
+              <Link
+                href={`/trips/${activePack.id}`}
+                className="text-ink-soft hover:text-ink"
+                aria-label="Open pack"
+              >
+                <ArrowUpRight size={18} />
+              </Link>
+            )}
+          </div>
+          <div className="mt-4 space-y-2.5">
+            {heaviestCats.length === 0 && (
               <p className="text-sm text-ink-soft">No pack items yet.</p>
             )}
-            {heaviest.map((row, i) => {
+            {heaviestCats.map((row, i) => {
               const pct = (row.grams / maxCatGrams) * 100;
               return (
                 <div key={row.category}>
@@ -369,7 +465,7 @@ function DashboardHome({
                       <Weight grams={row.grams} />
                     </span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-white/8">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -384,67 +480,108 @@ function DashboardHome({
             })}
           </div>
         </div>
+      </div>
 
-        <div className="biz-card flex flex-col p-5 lg:col-span-5">
-          <p className="text-sm font-medium">Main pack vs your target</p>
-          <p className="mt-0.5 text-xs text-ink-soft">
-            {mainPack
-              ? `Target ${format(targetGrams)}`
-              : "Set a target on any pack"}
-          </p>
-          <div className="relative mx-auto mt-4 grid h-36 w-36 place-items-center">
-            <svg
-              viewBox="0 0 120 120"
-              className="absolute inset-0 h-full w-full"
-            >
-              <circle
-                cx="60"
-                cy="60"
-                r="46"
-                fill="none"
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth="8"
-                strokeDasharray="4 6"
-              />
-              <circle
-                cx="60"
-                cy="60"
-                r="46"
-                fill="none"
-                stroke={overTarget ? "var(--accent)" : "var(--success)"}
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={`${(Math.min(targetProgress, 100) / 100) * 289} 289`}
-                transform="rotate(-90 60 60)"
-              />
-            </svg>
-            <div className="relative text-center">
-              <div className="text-3xl font-bold tracking-tight">
-                {mainPack ? `${targetProgress}%` : "—"}
-              </div>
-              <div className="text-xs text-ink-soft">of target</div>
-            </div>
+      {/* Cut candidates */}
+      <div className="biz-card overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3">
+          <div>
+            <p className="text-sm font-medium">Cut candidates</p>
+            <p className="text-xs text-ink-soft">
+              Heaviest base items — where ounces hide
+            </p>
           </div>
-          <p className="mt-3 text-center text-xs text-ink-soft">
-            {mainPack ? (
-              <>
-                <Weight grams={mainPack.stats.baseWeightGrams} /> base
-                {overTarget ? " · over target" : " · under target"}
-              </>
-            ) : (
-              "No pack yet"
-            )}
-          </p>
-          {mainPack && (
+          {activePack && (
             <Link
-              href={`/trips/${mainPack.id}`}
-              className="pill pill-cta mt-4 w-fit self-center !py-2"
+              href={`/trips/${activePack.id}`}
+              className="text-sm font-medium text-[var(--accent)] hover:underline"
             >
-              Open {mainPack.name}
-              <ArrowRight size={14} />
+              Edit pack
             </Link>
           )}
         </div>
+        {cutList.length === 0 ? (
+          <p className="px-4 py-6 text-sm text-ink-soft">
+            Add gear to a pack to see cut candidates.
+          </p>
+        ) : (
+          <div className="divide-y divide-[var(--line)]">
+            {cutList.map((item, i) => (
+              <Link
+                key={`${item.name}-${i}`}
+                href={activePack ? `/trips/${activePack.id}` : "/#packs"}
+                className="flex items-center justify-between gap-3 px-4 py-2 transition hover:bg-white/4"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">
+                    {item.name}
+                  </div>
+                  <div className="truncate text-xs text-ink-soft">
+                    {item.brand || "Unbranded"}
+                    {" · "}
+                    {CATEGORY_LABELS[item.category as Category] ??
+                      item.category}
+                  </div>
+                </div>
+                <div className="shrink-0 text-sm font-semibold tabular-nums">
+                  <Weight grams={item.weightGrams * item.quantity} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Trip readiness */}
+      <div className="biz-card p-5">
+        <p className="text-sm font-medium">Trip readiness</p>
+        {hasTrip && activePack ? (
+          <>
+            <p className="mt-1 text-sm text-ink-soft">
+              {activePack.trail?.name ?? "Custom route"}
+              {activePack.nights > 0
+                ? ` · ${activePack.nights} night${activePack.nights === 1 ? "" : "s"}`
+                : ""}
+              {" · "}
+              {activePack.season}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span
+                className={`text-lg font-bold ${
+                  packGapCount === 0 ? "trend-up" : "text-[var(--accent)]"
+                }`}
+              >
+                {packGapCount === 0
+                  ? "Checks clear"
+                  : `${activePack.failCount} fail · ${activePack.warnCount} warn`}
+              </span>
+              <Link
+                href={`/trips/${activePack.id}`}
+                className="pill pill-soft !py-1.5 !px-3 text-sm"
+              >
+                Review pack
+              </Link>
+              <button
+                type="button"
+                className="text-sm text-ink-soft hover:text-ink"
+                onClick={() => onOpen("trips")}
+              >
+                Trips & journal
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-ink-soft">
+            Assign a trail on Trips for overnight and climate checks.
+            <button
+              type="button"
+              className="ml-2 font-medium text-[var(--accent)] hover:underline"
+              onClick={() => onOpen("trips")}
+            >
+              Open Trips
+            </button>
+          </p>
+        )}
       </div>
 
       {!user && (
@@ -461,98 +598,88 @@ function DashboardHome({
         </div>
       )}
 
+      {/* Packs lightest-first */}
       <div>
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold tracking-tight">Pack board</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Your packs</h2>
           <button
             type="button"
             className="text-sm font-medium text-ink-soft hover:text-ink"
             onClick={() => onOpen("packs")}
           >
-            View all
+            Manage all
           </button>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {boardColumns.map((col) => (
-            <div key={col.title} className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-ink">{col.title}</span>
-                  <span className="rounded-md bg-black/5 px-1.5 py-0.5 text-xs font-medium text-ink-soft">
-                    {col.items.length}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-2.5">
-                {col.items.length === 0 && (
-                  <div className="biz-card border-dashed p-4 text-sm text-ink-soft">
-                    Nothing here yet
-                  </div>
-                )}
-                {col.items.map((pack, idx) => {
-                  const highlight = idx === 0 && col.title === "Trip-ready";
-                  return (
-                    <Link
-                      key={`${col.title}-${pack.id}`}
-                      href={`/trips/${pack.id}`}
-                      className={`block rounded-2xl border p-3.5 transition ${
-                        highlight
-                          ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                          : "biz-card hover:border-white/20"
+        {packsByLightest.length === 0 ? (
+          <div className="biz-card border-dashed p-5 text-sm text-ink-soft">
+            No packs yet — create one to start tracking base weight.
+          </div>
+        ) : (
+          <div className="biz-card divide-y divide-[var(--line)] overflow-hidden">
+            {packsByLightest.map((pack) => {
+              const target = pack.targetBaseWeightGrams || 4536;
+              const delta = pack.stats.baseWeightGrams - target;
+              const over = delta > 0;
+              const isActive = pack.id === activePack?.id;
+              return (
+                <div
+                  key={pack.id}
+                  className={`flex items-center gap-3 px-4 py-2.5 ${
+                    isActive ? "bg-white/5" : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => setActivePackId(pack.id)}
+                  >
+                    <div className="truncate text-sm font-semibold">
+                      {pack.name}
+                      {isActive && (
+                        <span className="ml-2 text-[11px] font-medium text-[var(--accent)]">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <div className="truncate text-xs text-ink-soft">
+                      {pack.trail?.name ??
+                        (pack.nights > 0
+                          ? `${pack.nights} night trip`
+                          : "Pack list")}
+                    </div>
+                  </button>
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-semibold tabular-nums">
+                      <Weight grams={pack.stats.baseWeightGrams} />
+                    </div>
+                    <div
+                      className={`text-[11px] ${
+                        over ? "text-[var(--accent)]" : "trend-up"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="truncate font-semibold">
-                            {pack.name}
-                          </div>
-                          <p
-                            className={`mt-1 line-clamp-2 text-sm ${
-                              highlight ? "text-white/70" : "text-ink-soft"
-                            }`}
-                          >
-                            {pack.trail?.name ??
-                              (pack.nights > 0
-                                ? `${pack.nights} night trip`
-                                : "Pack list")}
-                            {" · "}
-                            <Weight grams={pack.stats.baseWeightGrams} /> base
-                          </p>
-                        </div>
-                        <ArrowRight
-                          size={16}
-                          className={
-                            highlight ? "text-white/60" : "text-ink-soft"
-                          }
-                        />
-                      </div>
-                      <div
-                        className={`mt-3 flex flex-wrap items-center gap-3 text-xs ${
-                          highlight ? "text-white/55" : "text-ink-soft"
-                        }`}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          <Package size={12} />
-                          {pack.stats.itemCount}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Calendar size={12} />
-                          {pack.season}
-                        </span>
-                        {(pack.failCount > 0 || pack.warnCount > 0) && (
-                          <span className="inline-flex items-center gap-1">
-                            <MessageSquare size={12} />
-                            {pack.failCount}F/{pack.warnCount}W
-                          </span>
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+                      {over ? (
+                        <>
+                          <Weight grams={delta} /> over
+                        </>
+                      ) : (
+                        <>
+                          <Weight grams={Math.abs(delta)} /> under
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <Link
+                    href={`/trips/${pack.id}`}
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/6 text-ink-soft transition hover:bg-[var(--accent)] hover:text-white"
+                    aria-label={`Open ${pack.name}`}
+                  >
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
