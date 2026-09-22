@@ -343,11 +343,19 @@ textarea {
   padding: 0.72rem 0.85rem;
   color: var(--ink);
   outline: none;
+  color-scheme: dark;
 }
 
 .field:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Native <option> menus ignore most CSS; force a dark popup so light --ink stays readable. */
+select.field option,
+select.field optgroup {
+  background-color: #16181c;
+  color: #f4f1ea;
 }
 
 .field-sm {
@@ -361,6 +369,7 @@ textarea {
   border-color: rgba(255, 255, 255, 0.14);
   color: var(--ink);
   font-weight: 560;
+  color-scheme: dark;
 }
 
 .field-category:focus {

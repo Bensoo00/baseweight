@@ -9,6 +9,7 @@ import {
   Copy,
   Download,
   FileUp,
+  Pencil,
   Plus,
   Share2,
   Trash2,
@@ -87,6 +88,30 @@ export function PacksClient({
     startTransition(async () => {
       await fetch(`/api/trips/${pack.id}`, { method: "DELETE" });
       setPacks((prev) => prev.filter((p) => p.id !== pack.id));
+    });
+  }
+
+  function renamePack(pack: PackRow) {
+    const next = window.prompt("Rename pack", pack.name);
+    if (next == null) return;
+    const name = next.trim();
+    if (!name || name === pack.name) return;
+    setPacks((prev) =>
+      prev.map((p) => (p.id === pack.id ? { ...p, name } : p)),
+    );
+    startTransition(async () => {
+      const res = await fetch(`/api/trips/${pack.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        setPacks((prev) =>
+          prev.map((p) => (p.id === pack.id ? { ...p, name: pack.name } : p)),
+        );
+        return;
+      }
+      await refresh();
     });
   }
 
@@ -403,6 +428,16 @@ export function PacksClient({
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  className="pill pill-soft !px-2.5 !py-1.5 text-xs"
+                  onClick={() => renamePack(pack)}
+                  disabled={pending}
+                  title="Rename"
+                  aria-label={`Rename ${pack.name}`}
+                >
+                  <Pencil size={13} />
+                </button>
                 <button
                   type="button"
                   className="pill pill-soft !px-2.5 !py-1.5 text-xs"

@@ -25,7 +25,40 @@ export type UpgradeSuggestion = {
   reason: string;
 };
 
+function itemText(item: Packable) {
+  return `${item.brand ?? ""} ${item.name} ${item.notes ?? ""}`.toLowerCase();
+}
+
+/** Backpack detection — category alone is flaky (LP “Big 3”, custom labels, typos). */
+function looksLikeBackpack(item: Packable) {
+  if (item.category === "pack") return true;
+  const text = itemText(item);
+  if (
+    /\b(backpack|daypack|rucksack|frameless|frame\s*pack|ul\s*pack)\b/.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  // Capacity + pack wording (e.g. "Exos 48", "Southwest 40L")
+  if (/\b\d{2,3}\s?l(iters?)?\b/.test(text) && /\bpack\b/.test(text)) {
+    return true;
+  }
+  // Common UL pack models / makers even when category drifted to Other
+  if (
+    /\b(exos|atmos|aether|gorillo|gossamer\s*gear|mariposa|kumo|murmur|nexus|southwest|circuit|windrider|hyperlite|hmg|zpacks|ula\b|durston\s*kakwa|osprey|gregory|deuter|mystery\s*ranch)\b/.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function hasCategory(gear: Packable[], category: Category) {
+  if (category === "pack") {
+    return gear.some((g) => looksLikeBackpack(g));
+  }
   return gear.some((g) => g.category === category);
 }
 
@@ -76,7 +109,7 @@ export function runGapChecks(options: {
     {
       category: "pack",
       when: true,
-      detail: "You need a pack to carry the kit.",
+      detail: "Add your backpack (or set its category to Pack).",
     },
     {
       category: "shelter",

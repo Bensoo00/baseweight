@@ -12,6 +12,7 @@ import {
   Eraser,
   Megaphone,
   Palette,
+  Pencil,
   Plus,
   Share2,
   Trash2,
@@ -63,6 +64,7 @@ export function TripDetailClient({
   const [pending, startTransition] = useTransition();
   const [shareReady, setShareReady] = useState(true);
   const writeQueue = useRef(Promise.resolve());
+  const committedNameRef = useRef(initial.trip.name);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -202,6 +204,11 @@ export function TripDetailClient({
   }
 
   function saveTrip(patch: Record<string, unknown>) {
+    if (typeof patch.name === "string") {
+      const trimmed = patch.name.trim();
+      if (!trimmed) return;
+      patch = { ...patch, name: trimmed };
+    }
     setDetail((prev) => ({
       ...prev,
       trip: {
@@ -210,13 +217,40 @@ export function TripDetailClient({
         updatedAt: new Date().toISOString(),
       } as Trip,
     }));
+    const tripId = detail.trip.id;
     void enqueueWrite(async () => {
-      await fetch(`/api/trips/${detail.trip.id}`, {
+      const res = await fetch(`/api/trips/${tripId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data?.trip) {
+        setDetail((prev) => ({
+          ...prev,
+          trip: data.trip,
+          trail: data.trail ?? prev.trail,
+          checks: data.checks ?? prev.checks,
+          upgrades: data.upgrades ?? prev.upgrades,
+          stats: data.stats ?? prev.stats,
+        }));
+      }
     });
+  }
+
+  function commitPackName(raw: string) {
+    const next = raw.trim();
+    if (!next) {
+      setDetail((prev) => ({
+        ...prev,
+        trip: { ...prev.trip, name: committedNameRef.current },
+      }));
+      return;
+    }
+    if (next === committedNameRef.current) return;
+    committedNameRef.current = next;
+    saveTrip({ name: next });
   }
 
   function addSelected() {
@@ -405,17 +439,32 @@ export function TripDetailClient({
           <Link href="/#packs" className="text-sm text-ink-soft hover:text-ink">
             ← All packs
           </Link>
-          <input
-            className="mt-3 w-full border-0 bg-transparent text-3xl font-semibold tracking-tight outline-none md:text-4xl"
-            value={detail.trip.name}
-            onChange={(e) =>
-              setDetail({
-                ...detail,
-                trip: { ...detail.trip, name: e.target.value },
-              })
-            }
-            onBlur={(e) => saveTrip({ name: e.target.value })}
-          />
+          <label className="mt-3 block">
+            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-soft">
+              <Pencil size={12} aria-hidden />
+              Pack name
+            </span>
+            <input
+              className="field w-full text-2xl font-semibold tracking-tight md:text-3xl"
+              value={detail.trip.name}
+              aria-label="Pack name"
+              maxLength={120}
+              onChange={(e) => {
+                const name = e.target.value;
+                setDetail((prev) => ({
+                  ...prev,
+                  trip: { ...prev.trip, name },
+                }));
+              }}
+              onBlur={(e) => commitPackName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+            />
+          </label>
           <p className="mt-2 text-ink-soft">
             {detail.trail
               ? `${detail.trail.region} · ${detail.trail.difficulty} · ${detail.trail.climate}`

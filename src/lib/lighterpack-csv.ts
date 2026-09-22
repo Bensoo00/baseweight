@@ -96,9 +96,14 @@ function mapCategory(raw: string): Category {
   for (const cat of CATEGORIES) {
     if (v === cat) return cat;
   }
+  // LighterPack labels are freeform — match plurals / Big 3 buckets
   if (/shelter|tent|tarp|bivy|mid/.test(v)) return "shelter";
   if (/sleep|quilt|bag|pad|pillow/.test(v)) return "sleep";
-  if (/^pack|backpack|rucksack/.test(v)) return "pack";
+  if (
+    /\bpacks?\b|backpack|rucksack|big\s*3|big\s*three|carry|hauling/.test(v)
+  ) {
+    return "pack";
+  }
   if (/cook|kitchen|stove|pot|mug/.test(v)) return "cook";
   if (/water|hydrat|filter|bottle/.test(v)) return "water";
   if (/cloth|apparel|layer|rain|jacket|pants|shirt|socks|gloves|hat/.test(v)) {
