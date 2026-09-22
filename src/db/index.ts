@@ -20,9 +20,13 @@ function requireDatabaseUrl() {
   return url;
 }
 
-/** Normalize Render URLs so SSL works from Vercel. */
+/** Normalize hosted Postgres URLs so SSL works from Vercel. */
 export function normalizeDatabaseUrl(url: string) {
-  if (!url.includes("render.com")) return url;
+  const needsSslHint =
+    url.includes("render.com") ||
+    url.includes("neon.tech") ||
+    url.includes("sslmode=");
+  if (!needsSslHint) return url;
   if (url.includes("sslmode=")) return url;
   return `${url}${url.includes("?") ? "&" : "?"}sslmode=require`;
 }
@@ -33,6 +37,7 @@ export function getPool() {
   const connectionString = normalizeDatabaseUrl(requireDatabaseUrl());
   const needsSsl =
     connectionString.includes("render.com") ||
+    connectionString.includes("neon.tech") ||
     connectionString.includes("sslmode=require") ||
     process.env.PGSSL === "true" ||
     process.env.NODE_ENV === "production";

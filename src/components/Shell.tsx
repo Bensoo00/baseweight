@@ -10,6 +10,7 @@ import {
   Package,
   Plus,
   Route,
+  Scale,
 } from "lucide-react";
 import { UnitToggle } from "@/components/UnitProvider";
 import type { PublicUser } from "@/db/schema";
@@ -121,8 +122,8 @@ export function Shell({
                 onClick={() => go("dashboard")}
                 className="flex shrink-0 items-center gap-2.5"
               >
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--accent)] text-sm font-bold text-white">
-                  Bw
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--accent)] text-white">
+                  <Scale size={18} strokeWidth={2.4} aria-hidden />
                 </span>
                 <span className="hidden text-lg font-semibold tracking-tight text-ink sm:inline">
                   Baseweight
